@@ -1,0 +1,8 @@
+certifi
+chardet
+idna
+phue
+requests
+six
+spotipy
+urllib3
