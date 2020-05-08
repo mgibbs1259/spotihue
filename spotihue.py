@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     if args.first_connect:
         logging.info("Connecting to the Hue Bridge for the first time")
-        logging.info("Please ensure Hue Bridge button is pressed")
+        logging.info("Ensure Hue Bridge button is pressed")
         spotihue_bridge.connect()
 
     spotihue_bridge = spotihue_bridge.turn_lights_on()
