@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import argparse
 import logging
+import argparse
 
 from spotihue_class import SpotiHue
 from hue_bridge_ip_address import hue_bridge_ip_address
