@@ -1,0 +1,1 @@
+hue_bridge_ip_address = "YOUR HUE BRIDGE IP ADDRESS"
