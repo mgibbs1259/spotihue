@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 import logging
 
-import phue
-import spotipy
 from phue import Bridge
+from spotipy import SpotifyClientCredentials, Spotify
 
 
-class SpotiHue(Bridge):
+class SpotiHue(Bridge, SpotifyClientCredentials, Spotify):
     def __init__(self, hue_bridge_ip_address):
-        super().__init__(hue_bridge_ip_address)
+        Bridge.__init__(hue_bridge_ip_address)
+        SpotifyClientCredentials.__init__()
+        Spotify.__init__(client_credentials_manager=self)
 
     def turn_lights_on(self):
         """Turns all of the lights on to half brightness."""
@@ -16,4 +17,4 @@ class SpotiHue(Bridge):
             light.on = True
             light.brightness = 127
 
-
+    def

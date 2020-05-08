@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
+import os
 import logging
 import argparse
 
+import credentials
 from spotihue_class import SpotiHue
-from hue_bridge_ip_address import hue_bridge_ip_address
+from credentials import hue_bridge_ip_address
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+
+    os.environ["SPOTIPY_CLIENT_ID"] = credentials.spotify_client_id
+    os.environ["SPOTIPY_CLIENT_SECRET"] = credentials.spotify_client_secret
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--first_connect", default=False, action="store_true",
@@ -22,4 +27,3 @@ if __name__ == "__main__":
         spotihue_bridge.connect()
 
     spotihue_bridge = spotihue_bridge.turn_lights_on()
-
