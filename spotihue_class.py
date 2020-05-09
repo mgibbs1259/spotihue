@@ -7,7 +7,7 @@ class SpotiHue(object):
         self.spotify = spotify
 
     def turn_lights_on(self):
-        """Turns all of the lights on to half brightness."""
+        """Turns all of the lights on to full brightness."""
         for light in self.hue_bridge.lights:
             light.on = True
-            light.brightness = 127
+            light.brightness = 255
