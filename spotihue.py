@@ -21,17 +21,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     hue_bridge = Bridge(credentials.hue_bridge_ip_address)
-    token = util.prompt_for_user_token(credentials.spotify_username, credentials.spotify_scope,
-                                       credentials.spotify_client_id, credentials.spotify_client_secret,
-                                       credentials.spotify_redirect_uri)
-    spotify = Spotify(auth=token)
-
     if args.first_connect:
         logging.info("Connecting to the Hue Bridge for the first time")
         logging.info("Ensure Hue Bridge button is pressed")
         hue_bridge.connect()
 
+    spotify_token = util.prompt_for_user_token(credentials.spotify_username, credentials.spotify_scope,
+                                               credentials.spotify_client_id, credentials.spotify_client_secret,
+                                               credentials.spotify_redirect_uri)
+    spotify = Spotify(auth=spotify_token)
+
     spotihue = SpotiHue(hue_bridge, spotify)
     spotihue.turn_lights_on()
     spotihue.download_current_track_album_artwork()
-    spotihue.change_bulb()
+    spotihue.change_light_color()
