@@ -3,9 +3,12 @@ import os
 import logging
 import argparse
 
+from phue import Bridge
+from spotipy import Spotify
+from spotipy.oauth2 import SpotifyClientCredentials
+
 import credentials
 from spotihue_class import SpotiHue
-from credentials import hue_bridge_ip_address
 
 
 if __name__ == "__main__":
@@ -19,11 +22,13 @@ if __name__ == "__main__":
                         help="Connect to the Hue Bridge for the first time. Ensure Hue Bridge button is pressed.")
     args = parser.parse_args()
 
-    spotihue_bridge = SpotiHue(hue_bridge_ip_address)
+    hue_bridge = Bridge(credentials.hue_bridge_ip_address)
+    spotify = Spotify(client_credentials_manager=SpotifyClientCredentials())
 
     if args.first_connect:
         logging.info("Connecting to the Hue Bridge for the first time")
         logging.info("Ensure Hue Bridge button is pressed")
-        spotihue_bridge.connect()
+        hue_bridge.connect()
 
-    spotihue_bridge = spotihue_bridge.turn_lights_on()
+    spotihue = SpotiHue(hue_bridge, spotify)
+    spotihue = spotihue.turn_lights_on()
