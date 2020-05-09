@@ -51,8 +51,11 @@ class SpotiHue(object):
 
     def first_cluster(self):
         album_artwork_array = self.kmeans()
-        print(album_artwork_array[0])
-        return album_artwork_array[0]
+        if np.all(album_artwork_array[0]==0):
+            cluster = np.array([255, 255, 255])
+        else:
+            cluster = album_artwork_array[0]
+        return cluster
 
     def convert_rgb_to_xy(self):
         # Convert values to between 0 and 1
