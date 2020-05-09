@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import os
+# -*- coding: utf-8 -*-
+
 import logging
 import argparse
 
+import spotipy.util as util
 from phue import Bridge
 from spotipy import Spotify
-from spotipy.oauth2 import SpotifyClientCredentials
 
 import credentials
 from spotihue_class import SpotiHue
@@ -14,16 +15,16 @@ from spotihue_class import SpotiHue
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    os.environ["SPOTIPY_CLIENT_ID"] = credentials.spotify_client_id
-    os.environ["SPOTIPY_CLIENT_SECRET"] = credentials.spotify_client_secret
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--first_connect", default=False, action="store_true",
                         help="Connect to the Hue Bridge for the first time. Ensure Hue Bridge button is pressed.")
     args = parser.parse_args()
 
     hue_bridge = Bridge(credentials.hue_bridge_ip_address)
-    spotify = Spotify(client_credentials_manager=SpotifyClientCredentials())
+    token = util.prompt_for_user_token(credentials.spotify_username, credentials.spotify_scope,
+                                       credentials.spotify_client_id, credentials.spotify_client_secret,
+                                       credentials.spotify_redirect_uri)
+    spotify = Spotify(auth=token)
 
     if args.first_connect:
         logging.info("Connecting to the Hue Bridge for the first time")
@@ -31,4 +32,6 @@ if __name__ == "__main__":
         hue_bridge.connect()
 
     spotihue = SpotiHue(hue_bridge, spotify)
-    spotihue = spotihue.turn_lights_on()
+    spotihue.turn_lights_on()
+    spotihue.download_current_track_album_artwork()
+    
