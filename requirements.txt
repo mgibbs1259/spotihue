@@ -1,6 +1,8 @@
 certifi
 chardet
 idna
+numpy
+opencv-python
 phue
 requests
 six
