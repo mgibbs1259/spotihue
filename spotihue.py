@@ -34,4 +34,4 @@ if __name__ == "__main__":
     spotihue = SpotiHue(hue_bridge, spotify)
     spotihue.turn_lights_on()
     spotihue.download_current_track_album_artwork()
-    
+    spotihue.change_bulb()
