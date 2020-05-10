@@ -93,11 +93,11 @@ class SpotiHue(object):
         return x, y
 
     def turn_lights_on(self):
-        """Turns all of the lights on to full brightness."""
-        logging.info("Turning the lights on to full brightness")
+        """Turns all of the lights on to half brightness."""
+        logging.info("Turning the lights on to half brightness")
         for light in self.hue_bridge.lights:
             light.on = True
-            light.brightness = 255
+            light.brightness = 127
 
     def change_light_color_album_artwork(self):
         """Change all of the lights to one of the prominent colors in the current track's album artwork."""
@@ -149,4 +149,4 @@ class SpotiHue(object):
         self.turn_lights_on()
         while self.determine_track_playing_status():
             self.change_light_color_album_artwork()
-            time.sleep(self.determine_wait_for_api_requests()/30)
+            time.sleep(self.determine_wait_for_api_requests()/50)
