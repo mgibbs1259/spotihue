@@ -149,4 +149,4 @@ class SpotiHue(object):
         self.turn_lights_on()
         while self.determine_track_playing_status():
             self.change_light_color_album_artwork()
-            time.sleep(self.determine_wait_for_api_requests()/20)
+            time.sleep(self.determine_wait_for_api_requests()/30)
