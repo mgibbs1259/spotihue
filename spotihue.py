@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import time
+import logging
 import urllib.request
 
 import cv2
@@ -13,8 +15,16 @@ class SpotiHue(object):
         self.hue_bridge = hue_bridge
         self.spotify = spotify
 
+    def retrieve_current_track_information(self):
+        """Returns the current track's name, artist, and album."""
+        current_track = self.spotify.currently_playing()
+        current_track_name = current_track["item"]["name"]
+        current_track_artist = current_track["item"]["album"]["artists"][0]["name"]
+        current_track_album = current_track["item"]["album"]["name"]
+        return current_track_name, current_track_artist, current_track_album
+
     def retrieve_current_track_album_artwork(self):
-        """Returns the URL associated with the current track's album artwork."""
+        """Returns the current track's album artwork URL."""
         return self.spotify.currently_playing()["item"]["album"]["images"][1]["url"]
 
     def download_current_track_album_artwork(self):
@@ -38,7 +48,7 @@ class SpotiHue(object):
     def obtain_kmeans_clusters(self):
         """Returns the cluster centers obtained by fitting K-Means with 3 clusters."""
         album_artwork_array = self.convert_current_track_album_artwork_to_2D_array()
-        kmeans = KMeans(n_clusters=3)
+        kmeans = KMeans(n_clusters=3, random_state=1259)
         kmeans.fit(album_artwork_array)
         return kmeans.cluster_centers_
 
@@ -84,13 +94,59 @@ class SpotiHue(object):
 
     def turn_lights_on(self):
         """Turns all of the lights on to full brightness."""
+        logging.info("Turning the lights on to full brightness")
         for light in self.hue_bridge.lights:
             light.on = True
             light.brightness = 255
 
-    def change_light_color(self):
+    def change_light_color_album_artwork(self):
         """Change all of the lights to one of the prominent colors in the current track's album artwork."""
-        self.turn_lights_on()
+        track, artist, album = self.retrieve_current_track_information()
+        logging.info(f"Changing the color of the lights based on the current track: {track}, {artist}, {album}")
         x, y = self.convert_xyz_to_xy()
         for light in self.hue_bridge.lights:
             light.xy = [x, y]
+
+    def change_light_color_normal(self):
+        """Change all of the lights to normal."""
+        logging.info(f"Changing the color of the lights to normal")
+        for light in self.hue_bridge.lights:
+            light.hue = 10000
+            light.saturation = 120
+
+    def obtain_current_track_progress(self):
+        """Returns the progress of the current track in milliseconds."""
+        return self.spotify.currently_playing()["progress_ms"]
+
+    def obtain_current_track_length(self):
+        """Returns the length of the current track in milliseconds."""
+        return self.spotify.track(track_id=self.spotify.currently_playing()["item"]["uri"])["duration_ms"]
+
+    def determine_wait_for_api_requests(self):
+        """Returns the difference between the current track's length and progress in seconds
+        to be used to wait before checking the Spotify API for the next track's information."""
+        current_track_progress = self.obtain_current_track_progress()
+        current_track_length = self.obtain_current_track_length()
+        return ((current_track_length - current_track_progress) + 500)/1000
+
+    def determine_track_playing_status(self):
+        """Returns a boolean indicating if Spotify is still playing a track or not.
+        Changes the lights back to normal if Spotify is not playing."""
+        try:
+            track_playing_status = self.spotify.currently_playing()["is_playing"]
+            if track_playing_status:
+                logging.info("Spotify is still playing")
+            else:
+                logging.info("Spotify stopped playing")
+                self.change_light_color_normal()
+            return track_playing_status
+        except:
+            logging.info("Spotify stopped playing")
+            self.change_light_color_normal()
+
+    def sync_current_track_album_artwork_lights(self):
+        """Syncs the current track's album artwork colors with the lights."""
+        self.turn_lights_on()
+        while self.determine_track_playing_status():
+            self.change_light_color_album_artwork()
+            time.sleep(self.determine_wait_for_api_requests()/20)

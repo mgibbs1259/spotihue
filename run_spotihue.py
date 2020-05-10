@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import logging
 
-import spotipy.util as util
 from phue import Bridge
+import spotipy.util as util
 from spotipy import Spotify
 
 import credentials
@@ -12,6 +13,8 @@ from spotihue import SpotiHue
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--first_connect", default=False, action="store_true",
                         help="Connect to the Hue Bridge for the first time. Ensure Hue Bridge button is pressed.")
@@ -30,4 +33,4 @@ if __name__ == "__main__":
 
     # SpotiHue
     spotihue = SpotiHue(hue_bridge, spotify)
-    spotihue.change_light_color()
+    spotihue.sync_current_track_album_artwork_lights()
