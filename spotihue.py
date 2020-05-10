@@ -13,12 +13,6 @@ class SpotiHue(object):
         self.hue_bridge = hue_bridge
         self.spotify = spotify
 
-    def turn_lights_on(self):
-        """Turns all of the lights on to full brightness."""
-        for light in self.hue_bridge.lights:
-            light.on = True
-            light.brightness = 255
-
     def retrieve_current_track_album_artwork(self):
         """Returns the URL associated with the current track's album artwork."""
         return self.spotify.currently_playing()["item"]["album"]["images"][1]["url"]
@@ -30,6 +24,7 @@ class SpotiHue(object):
 
     def resize_current_track_album_artwork(self):
         """Resizes the current track album artwork to 50% of the original size."""
+        self.download_current_track_album_artwork()
         album_artwork = cv2.imread("album_artwork.jpg")
         album_artwork = cv2.cvtColor(album_artwork, cv2.COLOR_BGR2RGB)
         dimensions = (int(album_artwork.shape[1] * 50 / 100), int(album_artwork.shape[0] * 50 / 100))
@@ -87,8 +82,15 @@ class SpotiHue(object):
         y = round(Y / (X + Y + Z), 4)
         return x, y
 
+    def turn_lights_on(self):
+        """Turns all of the lights on to full brightness."""
+        for light in self.hue_bridge.lights:
+            light.on = True
+            light.brightness = 255
+
     def change_light_color(self):
         """Change all of the lights to one of the prominent colors in the current track's album artwork."""
+        self.turn_lights_on()
         x, y = self.convert_xyz_to_xy()
         for light in self.hue_bridge.lights:
             light.xy = [x, y]
