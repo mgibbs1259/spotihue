@@ -29,7 +29,7 @@ def spotihue_sync():
             spotihue = SpotiHue()
             spotihue.sync_current_track_album_artwork_lights()
     return render_template("spotihue_main.html", message='SpotiHue was stopped. Turn on Spotify and '
-                                                         'click/press "SpotiHue"')
+                                                         'click/press "SpotiHue".')
 
 if __name__ == "__main__":
     app.run()
