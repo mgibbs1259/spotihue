@@ -7,23 +7,25 @@
 <head>
     <style>
     h1 {text-align: center;}
-    h3 {text-align: center;}
+    p {text-align: center;}
     div {text-align: center;}
     form {text-align: center;}
     </style>
 </head>
 <body>
     <h1>SpotiHue Connect</h1>
-    <h3>First Time?</h3>
+    <p>
+        If this is your first time using SpotiHue, please ensure that you press the button
+        on your Hue Bridge and then click/press "Yes". Otherwise, please click/press "No".
+    </p>&nbsp;
     <div>
-        {{ hb_connection_message }}
+        {{ message }}
     </div>
-    &nbsp;
-    <form action="/connect/" method="post">
+    <form action="/connect" method="post">
         <input type="submit" name="submit_button" value="Yes">
     </form>
     &nbsp;
-    <form action="/connect/" method="post">
+    <form action="/connect" method="post">
         <input type="submit" name="submit_button" value="No">
     </form>
 </body>

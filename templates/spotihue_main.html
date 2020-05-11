@@ -7,19 +7,20 @@
 <head>
     <style>
     h1 {text-align: center;}
-    h3 {text-align: center;}
+    p {text-align: center;}
     div {text-align: center;}
     form {text-align: center;}
     </style>
 </head>
 <body>
-    <h1>SpotiHue Sync</h1>&nbsp;
-    <div>
-        {{ hb_connection_message }}
+    <h1>SpotiHue</h1>&nbsp;
+    <p>Start Spotify and click/press "SpotiHue"</p>
+     <div>
+        {{ message }}
     </div>
     &nbsp;
-    <form action="/sync/" method="post">
-        <input type="submit" name="submit_button" value="Sync">
+    <form action="/play" method="post">
+        <input type="submit" name="submit_button" value="SpotiHue">
     </form>
 </body>
 </html>
