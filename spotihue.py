@@ -7,13 +7,22 @@ import urllib.request
 
 import cv2
 import numpy as np
+import spotipy
+from phue import Bridge
+from spotipy import Spotify
 from sklearn.cluster import KMeans
+
+import credentials
 
 
 class SpotiHue(object):
-    def __init__(self, hue_bridge, spotify):
-        self.hue_bridge = hue_bridge
-        self.spotify = spotify
+    def __init__(self):
+        self.hue_bridge = Bridge(credentials.hue_bridge_ip_address)
+        self.spotify = Spotify(auth=spotipy.util.prompt_for_user_token(credentials.spotify_username,
+                                                                       credentials.spotify_scope,
+                                                                       credentials.spotify_client_id,
+                                                                       credentials.spotify_client_secret,
+                                                                       credentials.spotify_redirect_uri))
 
     def retrieve_current_track_information(self):
         """Returns the current track's name, artist, and album."""
@@ -92,6 +101,10 @@ class SpotiHue(object):
         y = round(Y / (X + Y + Z), 4)
         return x, y
 
+    def connect_hue_bridge_first_time(self):
+        """Connects to the Hue Bridge for the first time. Ensure Hue Bridge button is pressed."""
+        self.hue_bridge.connect()
+
     def turn_lights_on(self):
         """Turns all of the lights on to half brightness."""
         logging.info("Turning the lights on to half brightness")
@@ -114,21 +127,6 @@ class SpotiHue(object):
             light.hue = 10000
             light.saturation = 120
 
-    def obtain_current_track_progress(self):
-        """Returns the progress of the current track in milliseconds."""
-        return self.spotify.currently_playing()["progress_ms"]
-
-    def obtain_current_track_length(self):
-        """Returns the length of the current track in milliseconds."""
-        return self.spotify.track(track_id=self.spotify.currently_playing()["item"]["uri"])["duration_ms"]
-
-    def determine_wait_for_api_requests(self):
-        """Returns the difference between the current track's length and progress in seconds
-        to be used to wait before checking the Spotify API for the next track's information."""
-        current_track_progress = self.obtain_current_track_progress()
-        current_track_length = self.obtain_current_track_length()
-        return ((current_track_length - current_track_progress) + 500)/1000
-
     def determine_track_playing_status(self):
         """Returns a boolean indicating if Spotify is still playing a track or not.
         Changes the lights back to normal if Spotify is not playing."""
@@ -149,4 +147,4 @@ class SpotiHue(object):
         self.turn_lights_on()
         while self.determine_track_playing_status():
             self.change_light_color_album_artwork()
-            time.sleep(self.determine_wait_for_api_requests()/50)
+            time.sleep(5.3)
