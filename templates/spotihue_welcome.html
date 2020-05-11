@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpotiHue Welcome</title>
+</head>
+<head>
+    <style>
+    h1 {text-align: center;}
+    h3 {text-align: center;}
+    div {text-align: center;}
+    form {text-align: center;}
+    </style>
+</head>
+<body>
+    <h1>SpotiHue Connect</h1>
+    <h3>First Time?</h3>
+    <div>
+        {{ hb_connection_message }}
+    </div>
+    &nbsp;
+    <form action="/connect/" method="post">
+        <input type="submit" name="submit_button" value="Yes">
+    </form>
+    &nbsp;
+    <form action="/connect/" method="post">
+        <input type="submit" name="submit_button" value="No">
+    </form>
+</body>
+</html>

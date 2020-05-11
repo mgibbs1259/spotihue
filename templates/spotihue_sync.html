@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpotiHue Sync</title>
+</head>
+<head>
+    <style>
+    h1 {text-align: center;}
+    h3 {text-align: center;}
+    div {text-align: center;}
+    form {text-align: center;}
+    </style>
+</head>
+<body>
+    <h1>SpotiHue Sync</h1>&nbsp;
+    <div>
+        {{ hb_connection_message }}
+    </div>
+    &nbsp;
+    <form action="/sync/" method="post">
+        <input type="submit" name="submit_button" value="Sync">
+    </form>
+</body>
+</html>
