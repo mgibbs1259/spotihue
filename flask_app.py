@@ -8,14 +8,12 @@ from spotihue import SpotiHue
 
 flask_app = Flask(__name__)
 
-flask_app.config['SECRET_KEY'] = str(uuid.uuid4())
+flask_app.config["SECRET_KEY"] = str(uuid.uuid4())
 
-flask_app.config['CELERY_BROKER_URL'] = "redis://localhost:6379/0"
-flask_app.config['CELERY_RESULT_BACKEND'] = "redis://localhost:6379/0"
-flask_app.config['CELERY_TRACK_STARTED'] = True
-flask_app.config['CELERY_SEND_EVENTS'] = True
+flask_app.config["CELERY_BROKER_URL"] = "redis://localhost:6379/0"
+flask_app.config["CELERY_RESULT_BACKEND"] = "redis://localhost:6379/0"
 
-celery = Celery(flask_app.name, broker=flask_app.config['CELERY_BROKER_URL'])
+celery = Celery(flask_app.name, broker=flask_app.config["CELERY_BROKER_URL"])
 celery.conf.update(flask_app.config)
 
 @celery.task()
