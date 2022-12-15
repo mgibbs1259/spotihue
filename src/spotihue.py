@@ -63,7 +63,7 @@ class SpotiHue():
         k: int
     ) -> np.array:
         """Returns the cluster centers obtained by fitting K-Means with k clusters."""
-        kmeans = KMeans(n_clusters=k, random_state=1259)
+        kmeans = KMeans(n_init=10, n_clusters=k, random_state=1259)
         kmeans.fit(album_artwork_array)
         return kmeans.cluster_centers_
 
@@ -130,19 +130,9 @@ class SpotiHue():
     def turn_lights_on(self) -> None:
         """Turns all of the lights on to half brightness."""
         for light in self.hue_bridge.lights:
-            light.on = True
-            light.brightness = 127
-
-    def turn_lights_off(self) -> None:
-        """Turns all of the lights off."""
-        for light in self.hue_bridge.lights:
-            light.on = False
-
-    def change_light_color_normal(self) -> None:
-        """Change all of the lights to normal."""
-        for light in self.hue_bridge.lights:
-            light.hue = 10000
-            light.saturation = 120
+            if not light.on:
+                light.on = True
+                light.brightness = 127
 
     def change_light_color_album_artwork(
         self,
@@ -152,6 +142,12 @@ class SpotiHue():
         """Change all of the lights to one of the prominent colors in the current track's album artwork."""
         for light in self.hue_bridge.lights:
             light.xy = [x, y]
+
+    def change_light_color_normal(self) -> None:
+        """Change all of the lights to normal."""
+        for light in self.hue_bridge.lights:
+            light.hue = 10000
+            light.saturation = 120
 
     def determine_track_playing_status(self) -> bool:
         """Returns a boolean indicating if Spotify is still playing a track or not."""
@@ -164,3 +160,43 @@ class SpotiHue():
                 return False
         except:
             return False
+
+    def sync_music_lights(
+        self,
+        last_track_name: str,
+        last_track_artist: str,
+        track_album_artwork_file_path: str,
+        k: int
+    ) -> Tuple[str, str, str, str]:
+        try:
+            track_name, track_artist, track_album,\
+                track_album_artwork_url = self.retrieve_current_track_information()
+
+            if last_track_name == track_name and last_track_artist == track_artist:
+                return track_name, track_artist, track_album, track_album_artwork_url
+
+            self.download_current_track_album_artwork(
+                track_album_artwork_url, track_album_artwork_file_path
+            )
+            resized_album_artwork_array = self.resize_current_track_album_artwork(
+                track_album_artwork_file_path
+            )
+            album_artwork_array = self.convert_current_track_album_artwork_to_2D_array(
+                resized_album_artwork_array
+            )
+
+            kmeans_cluster_centers = self.obtain_kmeans_clusters(
+                album_artwork_array, k)
+            kmeans_cluster = self.check_black_clusters(
+                kmeans_cluster_centers)[0]
+            R, G, B = self.normalize_rgb_values(kmeans_cluster)
+            R, G, B = self.apply_gamma_correction(R, G, B)
+            X, Y, Z = self.convert_rgb_to_xyz(R, G, B)
+            x, y = self.convert_xyz_to_xy(X, Y, Z)
+
+            self.change_light_color_album_artwork(x, y)
+            return track_name, track_artist, track_album, track_album_artwork_url
+
+        except:
+            self.change_light_color_normal()
+            return None, None, None, None
