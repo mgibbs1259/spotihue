@@ -54,7 +54,7 @@ async def execute_spotihue():
         track_album, track_album_artwork_url = spotihue.sync_music_lights(
             last_track_name="",
             last_track_artist="",
-            track_album_artwork_file_path="album-artwork.jpg",
+            track_album_artwork_file_path="album-artwork.jpeg",
             k=3
         )
     return {
