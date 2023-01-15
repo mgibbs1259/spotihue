@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.params import Query
 from dotenv import load_dotenv
 
-from src.spotihue import SpotiHue
+from spotihue.spotihue import SpotiHue
 
 
 load_dotenv()
