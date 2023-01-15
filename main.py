@@ -43,7 +43,7 @@ async def retrieve_current_track_information():
     
 
 @app.put("/start-spotihue/")
-async def stop_spotihue():
+async def start_spotihue():
     spotihue.turn_lights_on()
     return True
 
