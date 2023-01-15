@@ -127,27 +127,31 @@ class SpotiHue():
         y = round(Y / (X + Y + Z), 4)
         return x, y
 
-    def turn_lights_on(self) -> None:
+    def turn_lights_on(self, lights: list) -> None:
         """Turns all of the lights on to half brightness."""
-        for light in self.hue_bridge.lights:
-            if not light.on:
-                light.on = True
-                light.brightness = 127
+        current_lights = self.hue_bridge.get_light_objects("name")
+        for light in lights:
+            if not current_lights[light].on:
+                current_lights[light].on = True
+                current_light[light].brightness = 127
 
     def change_light_color_album_artwork(
         self,
         x: float,
-        y: float
+        y: float,
+        lights: list
     ) -> None:
         """Change all of the lights to one of the prominent colors in the current track's album artwork."""
-        for light in self.hue_bridge.lights:
-            light.xy = [x, y]
+        current_lights = self.hue_bridge.get_light_objects("name")
+        for light in lights:
+            current_lights[light].xy = [x, y]
 
-    def change_light_color_normal(self) -> None:
+    def change_light_color_normal(self, lights: list) -> None:
         """Change all of the lights to normal."""
-        for light in self.hue_bridge.lights:
-            light.hue = 10000
-            light.saturation = 120
+        current_lights = self.hue_bridge.get_light_objects("name")
+        for light in lights:
+            current_lights[light].hue = 10000
+            current_lights[light].saturation = 120
 
     def determine_track_playing_status(self) -> bool:
         """Returns a boolean indicating if Spotify is still playing a track or not."""
@@ -166,7 +170,8 @@ class SpotiHue():
         last_track_name: str,
         last_track_artist: str,
         track_album_artwork_file_path: str,
-        k: int
+        k: int,
+        lights: list
     ) -> Tuple[str, str, str, str]:
         try:
             track_name, track_artist, track_album,\
@@ -194,9 +199,9 @@ class SpotiHue():
             X, Y, Z = self.convert_rgb_to_xyz(R, G, B)
             x, y = self.convert_xyz_to_xy(X, Y, Z)
 
-            self.change_light_color_album_artwork(x, y)
+            self.change_light_color_album_artwork(x, y, lights)
             return track_name, track_artist, track_album, track_album_artwork_url
 
         except:
-            self.change_light_color_normal()
+            self.change_light_color_normal(lights)
             return None, None, None, None

@@ -1,9 +1,11 @@
 import os
+from typing import List, Union
 
 import spotipy
 from phue import Bridge
 from spotipy import Spotify
 from fastapi import FastAPI
+from fastapi.params import Query
 from dotenv import load_dotenv
 
 from src.spotihue import SpotiHue
@@ -30,6 +32,14 @@ spotihue = SpotiHue(spotify, hue)
 app = FastAPI()
 
 
+@app.get("/current-lights/")
+async def retrieve_current_light_information():
+    lights = []
+    for light in hue.lights:
+        lights.append(light.name)
+    return lights
+    
+
 @app.get("/current-track-information/")
 async def retrieve_current_track_information():
     track_name, track_artist,\
@@ -40,22 +50,23 @@ async def retrieve_current_track_information():
         "track_album": track_album,
         "track_album_artwork_url": track_album_artwork_url
     }
-    
+
 
 @app.put("/start-spotihue/")
-async def start_spotihue():
-    spotihue.turn_lights_on()
+async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
+    spotihue.turn_lights_on(lights)
     return True
 
 
 @app.put("/execute-spotihue/")
-async def execute_spotihue():
+async def execute_spotihue(lights: Union[List[str], None] = Query(default=None)):
     track_name, track_artist,\
         track_album, track_album_artwork_url = spotihue.sync_music_lights(
             last_track_name="",
             last_track_artist="",
             track_album_artwork_file_path="album-artwork.jpeg",
-            k=3
+            k=3,
+            lights=lights
         )
     return {
         "track_name": track_name,
@@ -66,6 +77,6 @@ async def execute_spotihue():
 
 
 @app.put("/stop-spotihue/")
-async def stop_spotihue():
-    spotihue.change_light_color_normal()
+async def stop_spotihue(lights: Union[List[str], None] = Query(default=None)):
+    spotihue.change_light_color_normal(lights)
     return False
