@@ -2,6 +2,8 @@ fastapi
 numpy
 opencv-python
 phue
+pre-commit
+pytest
 python-dotenv
 scikit-learn
 spotipy

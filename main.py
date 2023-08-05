@@ -20,7 +20,7 @@ spotify = Spotify(
         os.environ.get("SPOTIFY_SCOPE"),
         os.environ.get("SPOTIFY_CLIENT_ID"),
         os.environ.get("SPOTIFY_CLIENT_SECRET"),
-        os.environ.get("SPOTIFY_REDIRECT_URI")
+        os.environ.get("SPOTIFY_REDIRECT_URI"),
     )
 )
 hue = Bridge(os.environ.get("HUE_BRIDGE_IP_ADDRESS"))
@@ -38,17 +38,21 @@ async def retrieve_current_light_information():
     for light in hue.lights:
         lights.append(light.name)
     return lights
-    
+
 
 @app.get("/current-track-information/")
 async def retrieve_current_track_information():
-    track_name, track_artist,\
-        track_album, track_album_artwork_url = spotihue.retrieve_current_track_information()
+    (
+        track_name,
+        track_artist,
+        track_album,
+        track_album_artwork_url,
+    ) = spotihue.retrieve_current_track_information()
     return {
         "track_name": track_name,
         "track_artist": track_artist,
         "track_album": track_album,
-        "track_album_artwork_url": track_album_artwork_url
+        "track_album_artwork_url": track_album_artwork_url,
     }
 
 
@@ -60,19 +64,23 @@ async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
 
 @app.put("/execute-spotihue/")
 async def execute_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    track_name, track_artist,\
-        track_album, track_album_artwork_url = spotihue.sync_music_lights(
-            last_track_name="",
-            last_track_artist="",
-            track_album_artwork_file_path="album-artwork.jpeg",
-            k=3,
-            lights=lights
-        )
+    (
+        track_name,
+        track_artist,
+        track_album,
+        track_album_artwork_url,
+    ) = spotihue.sync_music_lights(
+        last_track_name="",
+        last_track_artist="",
+        track_album_artwork_file_path="album-artwork.jpeg",
+        k=3,
+        lights=lights,
+    )
     return {
         "track_name": track_name,
         "track_artist": track_artist,
         "track_album": track_album,
-        "track_album_artwork_url": track_album_artwork_url
+        "track_album_artwork_url": track_album_artwork_url,
     }
 
 
