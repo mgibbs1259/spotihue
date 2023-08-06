@@ -1,9 +1,17 @@
 import requests
-from typing import Tuple
+from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
 from sklearn.cluster import KMeans
+
+
+class AlbumArtworkRetrievalError(Exception):
+    """Custom exception for errors during album artwork retrieval."""
+
+
+class AlbumArtworkProcessingError(Exception):
+    """Custom exception for errors during album artwork processing."""
 
 
 class SpotiHue:
@@ -11,31 +19,44 @@ class SpotiHue:
         self.spotify = spotify
         self.hue_bridge = hue_bridge
 
-    def retrieve_current_track_information(self) -> Tuple[str, str, str, str]:
+    def retrieve_current_track_information(self) -> Optional[Tuple[str, str, str, str]]:
         """Retrieves information about the current track.
 
         Returns:
-            tuple: The current track's name, artist, album, and album artwork URL
+            tuple: The current track's name, artist, album, and album artwork URL.
+            Returns None if the current track information is not available.
         """
         current_track = self.spotify.currently_playing()
-        track_name = current_track["item"]["name"]
-        track_artist = current_track["item"]["album"]["artists"][0]["name"]
-        track_album = current_track["item"]["album"]["name"]
-        track_album_artwork_url = current_track["item"]["album"]["images"][1]["url"]
+        if not current_track:
+            return None
+
+        track_data = current_track.get("item")
+        if not track_data:
+            return None
+
+        track_name = track_data.get("name")
+        track_album = self._extract_album_data(track_data)
+        track_artist = self._extract_artists_data(track_data)
+        track_album_artwork_url = self._extract_album_artwork_url(track_data)
+
         return track_name, track_artist, track_album, track_album_artwork_url
 
-    def obtain_current_track_album_artwork_array(
+    def obtain_current_track_album_artwork_image_array(
         self, track_album_artwork_url: str
     ) -> np.ndarray:
-        """Retrieves the current track's album artwork pixel value array
+        """Retrieves the current track's album artwork pixel value array.
 
         Args:
-            track_album_artwork_url (str): The current track's album artwork URL
+            track_album_artwork_url (str): The current track's album artwork URL.
 
         Returns:
-            numpy.ndarray or None: The current track's album artwork pixel value array in RGB color format.
-            Returns None if retrieving/processing the current track's album artwork pixel value array fails.
+            numpy.ndarray: Album artwork pixel value array.
         """
+        if not track_album_artwork_url:
+            raise ValueError(
+                f"The current track's album artwork URL {track_album_artwork_url} is empty"
+            )
+
         try:
             response = requests.get(track_album_artwork_url)
             response.raise_for_status()  # Raise HTTPError for bad responses
@@ -44,61 +65,47 @@ class SpotiHue:
             image_bytes_array = np.frombuffer(image_bytes, dtype=np.uint8)
             image_array = cv2.imdecode(image_bytes_array, cv2.IMREAD_COLOR)
 
+            return image_array
+
+        except Exception as e:
+            raise AlbumArtworkRetrievalError(
+                f"Error retrieving the current track's album artwork from {track_album_artwork_url}: {e}"
+            )
+
+    def process_album_artwork_image_array(self, image_array: np.ndarray) -> np.ndarray:
+        """Processes the current track's album artwork pixel value array.
+
+        Args:
+            image_array (numpy.ndarray): The album artwork pixel value array in BGR color format.
+
+        Returns:
+            numpy.ndarray: Processed album artwork pixel value array.
+        """
+        try:
             # Convert from default BGR color format to RGB color format
             image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
 
+            # Resize image array
+            image_array = self._resize_album_artwork_image_array_by_percentage(
+                image_array
+            )
+
+            # Convert from 3D to 2D image array
+            image_array = self._convert_album_artwork_image_array_to_2D_array(
+                image_array
+            )
+
             return image_array
 
-        except requests.RequestException as req_err:
-            print(
-                f"An error occurred when retrieving the current track's album artwork: {req_err}"
-            )
         except Exception as e:
-            print(
-                f"An error occured when processing the current track's album artwork: {e}"
-            )
-        return None
-
-    def resize_current_track_album_artwork_by_percentage(
-        self, image_array: np.ndarray, percentage: float
-    ) -> np.ndarray:
-        """Resize the current track's album artwork to a given percentage of its original size.
-
-        Args:
-            image_array (numpy.array): The input image array.
-            percentage (float): The desired size percentage.
-
-        Returns:
-            numpy.array: The resized image array.
-        """
-        if not (0 < percentage <= 100):
-            raise ValueError("Percentage must be between 0 and 100.")
-
-        try:
-            dimensions = (
-                int(image_array.shape[1] * percentage / 100),
-                int(image_array.shape[0] * percentage / 100),
-            )
-            resized_image_array = cv2.resize(
-                image_array, dimensions, interpolation=cv2.INTER_AREA
-            )
-            return resized_image_array
-        except Exception as e:
-            raise ValueError(
-                f"An error occurred when resizing the current track's album artwork: {e}"
+            raise AlbumArtworkProcessingError(
+                f"Error processing the current track's album artwork: {e}"
             )
 
-    def convert_current_track_album_artwork_to_2D_array(
-        self, resized_album_artwork_array: np.array
+    def obtain_kmeans_clusters(
+        self, album_artwork_array: np.array, k: int = 3
     ) -> np.array:
-        """Converts the current track album artwork from a 3D to a 2D array."""
-        return resized_album_artwork_array.reshape(
-            resized_album_artwork_array.shape[0] * resized_album_artwork_array.shape[1],
-            3,
-        )
-
-    def obtain_kmeans_clusters(self, album_artwork_array: np.array, k: int) -> np.array:
-        """Returns the cluster centers obtained by fitting K-Means with k clusters."""
+        """Returns the cluster centers obtained by fitting k-means with k clusters."""
         kmeans = KMeans(n_init=10, n_clusters=k, random_state=1259)
         kmeans.fit(album_artwork_array)
         return kmeans.cluster_centers_
@@ -231,3 +238,110 @@ class SpotiHue:
         except:
             self.change_light_color_normal(lights)
             return None, None, None, None
+
+    def _extract_album_data(self, track_data: dict) -> Optional[str]:
+        """Extracts the album name from track data.
+
+        Args:
+            track_data (dict): Track data containing album information.
+
+        Returns:
+            str: The name of the album, or None if not available.
+        """
+        album_data = track_data.get("album")
+        track_album = album_data.get("name")
+        return track_album
+
+    def _extract_artists_data(self, track_data: dict) -> Optional[str]:
+        """Extracts the artist name from track data.
+
+        Args:
+            track_data (dict): Track data containing album information.
+
+        Returns:
+            str: The name of the artist, or None if not available.
+        """
+        album_data = track_data.get("album")
+        artists_data = album_data.get("artists", [])
+
+        if not artists_data:
+            track_artist = None
+        else:
+            track_artist = artists_data[0]["name"]
+
+        return track_artist
+
+    def _extract_album_artwork_url(self, track_data: dict) -> Optional[str]:
+        """Extracts the album artwork URL from track data.
+
+        Args:
+            track_data (dict): Track data containing album information.
+
+        Returns:
+            str: The URL of the album artwork, or None if not available.
+        """
+        album_data = track_data.get("album")
+        images_data = album_data.get("images", [])
+
+        if len(images_data) < 2:
+            track_album_artwork_url = None
+        else:
+            track_album_artwork_url = images_data[1]["url"]
+
+        return track_album_artwork_url
+
+    def _resize_album_artwork_image_array_by_percentage(
+        self, image_array: np.ndarray, percentage: Union[int, float] = 50
+    ) -> np.ndarray:
+        """Resize the current track's album artwork to a given percentage of its original size.
+
+        Args:
+            image_array (numpy.ndarray): The input image array in 3D format (H x W x 3).
+            percentage (Union[int, float]): The desired size percentage between 1 and 99. Defaults to 50.
+
+        Returns:
+            numpy.ndarray: The resized image array in 3D format (H x W x 3).
+        """
+        if not (1 <= percentage < 100):
+            raise ValueError("percentage must be between 1 and 99.")
+
+        try:
+            dimensions = (
+                int(image_array.shape[1] * percentage / 100),
+                int(image_array.shape[0] * percentage / 100),
+            )
+            resized_image_array = cv2.resize(
+                image_array, dimensions, interpolation=cv2.INTER_AREA
+            )
+            return resized_image_array
+        except Exception as e:
+            raise AlbumArtworkProcessingError(
+                f"Error when resizing the current track's album artwork: {e}"
+            )
+
+    def _convert_album_artwork_image_array_to_2D_array(
+        self, image_array: np.ndarray
+    ) -> np.ndarray:
+        """Converts the current track's album artwork from a 3D to a 2D array where each row
+        corresponds to a pixel's RGB values. This is useful for various image processing
+        tasks, including k-means clustering and other analyses that treat each pixel
+        as a data point with RGB features.
+
+        Args:
+            image_array (np.ndarray): The input image array in 3D format (H x W x 3).
+
+        Returns:
+            np.ndarray: A 2D array where each row represents a pixel's RGB values.
+        """
+        if image_array.ndim != 3 or image_array.shape[2] != 3:
+            raise ValueError(
+                "input image_array must be a 3D array with shape (H, W, 3)."
+            )
+
+        try:
+            image_array = image_array.reshape(-1, 3)
+            return image_array
+        except Exception as e:
+            raise AlbumArtworkProcessingError(
+                f"Error when converting the current track's album artwork from 3D to 2D array: {e}"
+            )
