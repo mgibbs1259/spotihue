@@ -233,8 +233,8 @@ class SpotiHue:
             return None
 
         track_name = track_data.get("name")
-        track_album = self._extract_album_data(track_data)
-        track_artist = self._extract_artists_data(track_data)
+        track_album = self._extract_album_name(track_data)
+        track_artist = self._extract_artist_name(track_data)
         track_album_artwork_url = self._extract_album_artwork_url(track_data)
 
         return track_name, track_artist, track_album, track_album_artwork_url

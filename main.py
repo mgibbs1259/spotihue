@@ -2,6 +2,7 @@ import os
 from typing import List, Union
 
 import spotipy
+import uvicorn
 from phue import Bridge
 from spotipy import Spotify
 from fastapi import FastAPI
@@ -28,6 +29,7 @@ spotify = Spotify(
 hue = Bridge(os.environ.get("HUE_BRIDGE_IP_ADDRESS"))
 hue.connect()
 
+
 spotihue = SpotiHue(spotify, hue)
 
 
@@ -36,10 +38,7 @@ app = FastAPI()
 
 @app.get("/available-lights/")
 async def retrieve_light_information():
-    # lights = []
-    # for light in hue.lights:
-    #     lights.append(light.name)
-    return hue.lights
+    return [light.name for light in hue.lights]
 
 
 @app.get("/available-light-strategies/")
@@ -96,3 +95,7 @@ async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
 async def stop_spotihue(lights: Union[List[str], None] = Query(default=None)):
     spotihue.change_all_lights_to_normal_color(lights)
     return False
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
