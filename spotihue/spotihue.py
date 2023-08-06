@@ -89,19 +89,15 @@ class SpotiHue:
         if not (1 <= percentage < 100):
             raise ValueError("percentage must be between 1 and 99.")
 
-        try:
-            dimensions = (
-                int(image_array.shape[1] * percentage / 100),
-                int(image_array.shape[0] * percentage / 100),
-            )
-            resized_image_array = cv2.resize(
-                image_array, dimensions, interpolation=cv2.INTER_AREA
-            )
-            return resized_image_array
-        except Exception as e:
-            raise AlbumArtworkProcessingError(
-                f"Error when resizing the current track's album artwork: {e}"
-            )
+        dimensions = (
+            int(image_array.shape[1] * percentage / 100),
+            int(image_array.shape[0] * percentage / 100),
+        )
+        resized_image_array = cv2.resize(
+            image_array, dimensions, interpolation=cv2.INTER_AREA
+        )
+
+        return resized_image_array
 
     def _convert_album_artwork_image_array_to_2D_array(
         self, image_array: np.ndarray
@@ -122,12 +118,7 @@ class SpotiHue:
                 "input image_array must be a 3D array with shape (H, W, 3)."
             )
 
-        try:
-            return image_array.reshape(-1, 3)
-        except Exception as e:
-            raise AlbumArtworkProcessingError(
-                f"Error when converting the current track's album artwork from 3D to 2D array: {e}"
-            )
+        return image_array.reshape(-1, 3)
 
     def _check_for_black_cluster(self, cluster: np.ndarray) -> np.ndarray:
         """Returns the RGB values for white if the RGB values of a cluster are black.
@@ -319,12 +310,15 @@ class SpotiHue:
             light_color_values = []
             for cluster in kmeans_cluster_centers:
                 cluster = self._check_for_black_cluster(cluster)
+
                 normalized_rgb_values = self._normalize_rgb_values(cluster)
                 gamma_corrected_values = self.apply_gamma_correction(
                     normalized_rgb_values
                 )
+
                 X, Y, Z = self.convert_rgb_to_xyz(gamma_corrected_values)
                 x, y = self.convert_xyz_to_xy(X, Y, Z)
+
                 light_color_values.append((x, y))
             return light_color_values
         except Exception as e:
@@ -366,11 +360,8 @@ class SpotiHue:
         except:
             return False
 
-    def sync_music_lights(
-        self,
-        last_track_name: str,
-        last_track_artist: str,
-        lights: list,
+    def sync_lights_music(
+        self, lights: list, last_track_album_artwork_url: str
     ) -> Tuple[str, str, str, str]:
         try:
             (
@@ -380,7 +371,7 @@ class SpotiHue:
                 track_album_artwork_url,
             ) = self.retrieve_current_track_information()
 
-            if last_track_name == track_name and last_track_artist == track_artist:
+            if last_track_album_artwork_url == track_album_artwork_url:
                 return track_name, track_artist, track_album, track_album_artwork_url
 
             image_array = self.retrieve_current_track_information(
