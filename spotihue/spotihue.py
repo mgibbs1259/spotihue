@@ -14,8 +14,12 @@ class AlbumArtworkProcessingError(Exception):
     """Custom exception for errors during album artwork processing."""
 
 
-class kmeansClusterProcessingError(Exception):
+class KMeansClusterProcessingError(Exception):
     """Custom exception for errors during k-means cluster processing."""
+
+
+class LightsError(Exception):
+    """Custom exception for errors related to the lights."""
 
 
 class SpotiHue:
@@ -200,6 +204,19 @@ class SpotiHue:
         y = round(Y / total, 4)
         return x, y
 
+    def determine_current_track_status(self) -> bool:
+        """Determines if Spotify is currently playing a track.
+
+        Returns:
+            bool: True if Spotify is playing a track, False otherwise.
+        """
+        current_track = self.spotify.currently_playing()
+        current_track_status = current_track.get("is_playing")
+        if current_track_status:
+            return True
+        else:
+            return False
+
     def retrieve_current_track_information(self) -> Optional[Tuple[str, str, str, str]]:
         """Retrieves information about the current track.
 
@@ -281,7 +298,7 @@ class SpotiHue:
                 f"Error processing the current track's album artwork: {e}"
             )
 
-    def obtain_kmeans_clusters(self, image_array: np.narray, k: int = 3) -> np.ndarray:
+    def obtain_kmeans_clusters(self, image_array: np.ndarray, k: int = 3) -> np.ndarray:
         """Returns the cluster centers obtained by fitting k-means with k clusters.
 
         Args:
@@ -322,69 +339,75 @@ class SpotiHue:
                 light_color_values.append((x, y))
             return light_color_values
         except Exception as e:
-            raise kmeansClusterProcessingError(
+            raise KMeansClusterProcessingError(
                 f"Error processing the k-means clusters into light color values: {e}"
             )
 
-    def turn_lights_on(self, lights: list) -> None:
-        """Turns all of the lights on to half brightness."""
-        current_lights = self.hue_bridge.get_light_objects("name")
-        for light in lights:
-            if not current_lights[light].on:
-                current_lights[light].on = True
-                current_light[light].brightness = 127
+    def change_all_lights_to_normal_color(self, lights: list) -> None:
+        """Change all specified lights to "normal" color.
 
-    def change_light_color_album_artwork(
-        self, x: float, y: float, lights: list
+        Args:
+            lights (List[str]): List of light names to be modified.
+
+        Returns:
+            None
+        """
+        try:
+            current_lights = self.hue_bridge.get_light_objects("name")
+            for light in lights:
+                if not current_lights[light].on:
+                    current_lights[light].on = True
+                current_lights[light].hue = 10000
+                current_light[light].brightness = 254
+                current_lights[light].saturation = 120
+        except Exception as e:
+            raise LightsError(f"Error changing color of lights: {e}")
+
+    def change_all_lights_most_prominent_album_artwork_color(
+        self, lights: List[str], light_color_values: List[Tuple[float, float]]
     ) -> None:
-        """Change all of the lights to one of the prominent colors in the current track's album artwork."""
-        current_lights = self.hue_bridge.get_light_objects("name")
-        for light in lights:
-            current_lights[light].xy = [x, y]
+        """Change all specified lights to one of the most prominent colors in the current track's album artwork.
 
-    def change_light_color_normal(self, lights: list) -> None:
-        """Change all of the lights to normal."""
-        current_lights = self.hue_bridge.get_light_objects("name")
-        for light in lights:
-            current_lights[light].hue = 10000
-            current_lights[light].saturation = 120
+        Args:
+            lights (List[str]): List of light names to be modified.
+            light_color_values (List[Tuple[float, float]]): List of xy values representing prominent colors.
 
-    def determine_track_playing_status(self) -> bool:
-        """Returns a boolean indicating if Spotify is still playing a track or not."""
+        Returns:
+            None
+        """
         try:
-            track_playing_status = self.spotify.currently_playing()["is_playing"]
-            if track_playing_status:
-                return True
-            else:
-                return False
-        except:
-            return False
+            current_lights = self.hue_bridge.get_light_objects("name")
+            x, y = light_color_values[0]
+            for light in lights:
+                current_lights[light].xy = [x, y]
+        except Exception as e:
+            raise LightsError(f"Error changing color of lights: {e}")
 
-    def sync_lights_music(
-        self, lights: list, last_track_album_artwork_url: str
-    ) -> Tuple[str, str, str, str]:
-        try:
-            (
-                track_name,
-                track_artist,
-                track_album,
-                track_album_artwork_url,
-            ) = self.retrieve_current_track_information()
+    # def sync_lights_music(
+    #     self, lights: list, last_track_album_artwork_url: str
+    # ) -> Tuple[str, str, str, str]:
+    #     try:
+    #         (
+    #             track_name,
+    #             track_artist,
+    #             track_album,
+    #             track_album_artwork_url,
+    #         ) = self.retrieve_current_track_information()
 
-            if last_track_album_artwork_url == track_album_artwork_url:
-                return track_name, track_artist, track_album, track_album_artwork_url
+    #         if last_track_album_artwork_url == track_album_artwork_url:
+    #             return track_name, track_artist, track_album, track_album_artwork_url
 
-            image_array = self.retrieve_current_track_information(
-                track_album_artwork_url
-            )
-            processed_image_array = self.process_album_artwork_image_array(image_array)
+    #         image_array = self.retrieve_current_track_information(
+    #             track_album_artwork_url
+    #         )
+    #         processed_image_array = self.process_album_artwork_image_array(image_array)
 
-            kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
-            light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
+    #         kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
+    #         light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
 
-            # self.change_light_color_album_artwork(x, y, lights)
-            return track_name, track_artist, track_album, track_album_artwork_url
+    #         # self.change_light_color_album_artwork(x, y, lights)
+    #         return track_name, track_artist, track_album, track_album_artwork_url
 
-        except:
-            self.change_light_color_normal(lights)
-            return None, None, None, None
+    #     except:
+    #         self.change_light_color_normal(lights)
+    #         return None, None, None, None

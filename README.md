@@ -6,6 +6,7 @@ If you don't have Docker already installed, follow these [instructions](https://
 
 ## Hue Bridge
 
+
 ## Spotify API
 
 # Develop

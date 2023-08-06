@@ -23,8 +23,10 @@ spotify = Spotify(
         os.environ.get("SPOTIFY_REDIRECT_URI"),
     )
 )
-hue = Bridge(os.environ.get("HUE_BRIDGE_IP_ADDRESS"))
 
+
+hue = Bridge(os.environ.get("HUE_BRIDGE_IP_ADDRESS"))
+hue.connect()
 
 spotihue = SpotiHue(spotify, hue)
 
@@ -32,12 +34,22 @@ spotihue = SpotiHue(spotify, hue)
 app = FastAPI()
 
 
-@app.get("/current-lights/")
-async def retrieve_current_light_information():
-    lights = []
-    for light in hue.lights:
-        lights.append(light.name)
-    return lights
+@app.get("/available-lights/")
+async def retrieve_light_information():
+    # lights = []
+    # for light in hue.lights:
+    #     lights.append(light.name)
+    return hue.lights
+
+
+@app.get("/available-light-strategies/")
+async def retrieve_light_strategies():
+    return ["constant", "ease", "cycle"]
+
+
+@app.get("/available-number-prominent-colors/")
+async def retrieve_number_prominent_colors(num_colors: int = 3):
+    return [x for x in range(1, num_colors + 1)]
 
 
 @app.get("/current-track-information/")
@@ -58,33 +70,29 @@ async def retrieve_current_track_information():
 
 @app.put("/start-spotihue/")
 async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    spotihue.turn_lights_on(lights)
+    spotihue.change_all_lights_to_normal_color(lights)
     return True
 
 
-@app.put("/execute-spotihue/")
-async def execute_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    (
-        track_name,
-        track_artist,
-        track_album,
-        track_album_artwork_url,
-    ) = spotihue.sync_music_lights(
-        last_track_name="",
-        last_track_artist="",
-        track_album_artwork_file_path="album-artwork.jpeg",
-        k=3,
-        lights=lights,
-    )
-    return {
-        "track_name": track_name,
-        "track_artist": track_artist,
-        "track_album": track_album,
-        "track_album_artwork_url": track_album_artwork_url,
-    }
+# @app.put("/execute-spotihue/")
+# async def execute_spotihue(lights: Union[List[str], None] = Query(default=None)):
+#     (
+#         track_name,
+#         track_artist,
+#         track_album,
+#         track_album_artwork_url,
+#     ) = spotihue.sync_lights_music(
+#         lights=lights,
+#     )
+#     return {
+#         "track_name": track_name,
+#         "track_artist": track_artist,
+#         "track_album": track_album,
+#         "track_album_artwork_url": track_album_artwork_url,
+#     }
 
 
 @app.put("/stop-spotihue/")
 async def stop_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    spotihue.change_light_color_normal(lights)
+    spotihue.change_all_lights_to_normal_color(lights)
     return False
