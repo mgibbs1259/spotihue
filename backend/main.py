@@ -46,11 +46,6 @@ async def retrieve_light_strategies():
     return ["constant", "ease", "cycle"]
 
 
-@app.get("/available-number-prominent-colors/")
-async def retrieve_number_prominent_colors(num_colors: int = 3):
-    return [x for x in range(1, num_colors + 1)]
-
-
 @app.get("/current-track-information/")
 async def retrieve_current_track_information():
     (
@@ -73,22 +68,18 @@ async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
     return True
 
 
-# @app.put("/execute-spotihue/")
-# async def execute_spotihue(lights: Union[List[str], None] = Query(default=None)):
-#     (
-#         track_name,
-#         track_artist,
-#         track_album,
-#         track_album_artwork_url,
-#     ) = spotihue.sync_lights_music(
-#         lights=lights,
-#     )
-#     return {
-#         "track_name": track_name,
-#         "track_artist": track_artist,
-#         "track_album": track_album,
-#         "track_album_artwork_url": track_album_artwork_url,
-#     }
+@app.put("/execute-spotihue/")
+async def execute_spotihue(
+    lights: Union[List[str], None] = Query(default=None),
+    last_track_album_artwork_url: str = Query(default=None),
+):
+    (
+        track_name,
+        track_artist,
+        track_album,
+        track_album_artwork_url,
+    ) = self.sync_lights_music(lights, last_track_album_artwork_url)
+    return track_album, track_artist, track_album, track_album_artwork_url
 
 
 @app.put("/stop-spotihue/")

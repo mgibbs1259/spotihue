@@ -336,7 +336,7 @@ class SpotiHue:
                 X, Y, Z = self.convert_rgb_to_xyz(gamma_corrected_values)
                 x, y = self.convert_xyz_to_xy(X, Y, Z)
 
-                light_color_values.append((x, y))
+                light_color_values.append([x, y])
             return light_color_values
         except Exception as e:
             raise KMeansClusterProcessingError(
@@ -358,15 +358,15 @@ class SpotiHue:
                 if not current_lights[light].on:
                     current_lights[light].on = True
                 current_lights[light].hue = 10000
-                current_light[light].brightness = 254
+                current_lights[light].brightness = 254
                 current_lights[light].saturation = 120
         except Exception as e:
             raise LightsError(f"Error changing color of lights: {e}")
 
-    def change_all_lights_most_prominent_album_artwork_color(
+    def change_all_lights_constant(
         self, lights: List[str], light_color_values: List[Tuple[float, float]]
     ) -> None:
-        """Change all specified lights to one of the most prominent colors in the current track's album artwork.
+        """Change all specified lights to the most prominent colors in the current track's album artwork.
 
         Args:
             lights (List[str]): List of light names to be modified.
@@ -377,37 +377,40 @@ class SpotiHue:
         """
         try:
             current_lights = self.hue_bridge.get_light_objects("name")
-            x, y = light_color_values[0]
-            for light in lights:
-                current_lights[light].xy = [x, y]
+
+            num_colors = len(light_color_values)
+            for i, light in enumerate(lights):
+                color = light_color_values[i % num_colors]
+                current_lights[light].xy = color
+
         except Exception as e:
             raise LightsError(f"Error changing color of lights: {e}")
 
-    # def sync_lights_music(
-    #     self, lights: list, last_track_album_artwork_url: str
-    # ) -> Tuple[str, str, str, str]:
-    #     try:
-    #         (
-    #             track_name,
-    #             track_artist,
-    #             track_album,
-    #             track_album_artwork_url,
-    #         ) = self.retrieve_current_track_information()
+    def sync_lights_music(
+        self, lights: list, last_track_album_artwork_url: str
+    ) -> Tuple[str, str, str, str]:
+        try:
+            (
+                track_name,
+                track_artist,
+                track_album,
+                track_album_artwork_url,
+            ) = self.retrieve_current_track_information()
 
-    #         if last_track_album_artwork_url == track_album_artwork_url:
-    #             return track_name, track_artist, track_album, track_album_artwork_url
+            if last_track_album_artwork_url == track_album_artwork_url:
+                return track_name, track_artist, track_album, track_album_artwork_url
 
-    #         image_array = self.retrieve_current_track_information(
-    #             track_album_artwork_url
-    #         )
-    #         processed_image_array = self.process_album_artwork_image_array(image_array)
+            image_array = self.retrieve_current_track_information(
+                track_album_artwork_url
+            )
+            processed_image_array = self.process_album_artwork_image_array(image_array)
 
-    #         kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
-    #         light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
+            kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
+            light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
 
-    #         # self.change_light_color_album_artwork(x, y, lights)
-    #         return track_name, track_artist, track_album, track_album_artwork_url
+            # self.change_light_color_album_artwork(x, y, lights)
+            return track_name, track_artist, track_album, track_album_artwork_url
 
-    #     except:
-    #         self.change_light_color_normal(lights)
-    #         return None, None, None, None
+        except:
+            self.change_light_color_normal(lights)
+            return None, None, None, None
