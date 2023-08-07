@@ -38,34 +38,38 @@ app = FastAPI()
 
 @app.get("/available-lights/")
 async def retrieve_light_information():
-    return [light.name for light in hue.lights]
-
-
-@app.get("/available-light-strategies/")
-async def retrieve_light_strategies():
-    return ["constant", "ease", "cycle"]
+    try:
+        return [light.name for light in hue.lights]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/current-track-information/")
 async def retrieve_current_track_information():
-    (
-        track_name,
-        track_artist,
-        track_album,
-        track_album_artwork_url,
-    ) = spotihue.retrieve_current_track_information()
-    return {
-        "track_name": track_name,
-        "track_artist": track_artist,
-        "track_album": track_album,
-        "track_album_artwork_url": track_album_artwork_url,
-    }
+    try:
+        (
+            track_name,
+            track_artist,
+            track_album,
+            track_album_artwork_url,
+        ) = spotihue.retrieve_current_track_information()
+        return {
+            "track_name": track_name,
+            "track_artist": track_artist,
+            "track_album": track_album,
+            "track_album_artwork_url": track_album_artwork_url,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.put("/start-spotihue/")
 async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    spotihue.change_all_lights_to_normal_color(lights)
-    return True
+    try:
+        spotihue.change_all_lights_to_normal_color(lights)
+        return {"status": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.put("/execute-spotihue/")
@@ -73,19 +77,30 @@ async def execute_spotihue(
     lights: Union[List[str], None] = Query(default=None),
     last_track_album_artwork_url: str = Query(default=None),
 ):
-    (
-        track_name,
-        track_artist,
-        track_album,
-        track_album_artwork_url,
-    ) = self.sync_lights_music(lights, last_track_album_artwork_url)
-    return track_album, track_artist, track_album, track_album_artwork_url
+    try:
+        (
+            track_album,
+            track_artist,
+            track_album,
+            track_album_artwork_url,
+        ) = spotihue.sync_lights_music(lights, last_track_album_artwork_url)
+        return {
+            "track_name": track_name,
+            "track_artist": track_artist,
+            "track_album": track_album,
+            "track_album_artwork_url": track_album_artwork_url,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.put("/stop-spotihue/")
 async def stop_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    spotihue.change_all_lights_to_normal_color(lights)
-    return False
+    try:
+        spotihue.change_all_lights_to_normal_color(lights)
+        return {"status": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 if __name__ == "__main__":

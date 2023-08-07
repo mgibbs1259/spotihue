@@ -22,6 +22,10 @@ class LightsError(Exception):
     """Custom exception for errors related to the lights."""
 
 
+class SyncError(Exception):
+    """Custom exception for errors related to syncing the lights and music."""
+
+
 class SpotiHue:
     def __init__(self, spotify, hue_bridge):
         self.spotify = spotify
@@ -389,6 +393,18 @@ class SpotiHue:
     def sync_lights_music(
         self, lights: list, last_track_album_artwork_url: str
     ) -> Tuple[str, str, str, str]:
+        """Synchronize the lights with the current track's album artwork.
+        This function retrieves information about the current track being played on Spotify,
+        compares the album artwork URL with the previous one, and updates the lights' colors
+        based on the album artwork colors if it's a new album.
+
+        Args:
+            lights (list): A list of lights to be synchronized.
+            last_track_album_artwork_url (str): The last track's album artwork URL.
+
+        Returns:
+            Tuple[str, str, str, str]: A tuple containing track name, artist name, album name, and album artwork URL.
+        """
         try:
             (
                 track_name,
@@ -404,13 +420,13 @@ class SpotiHue:
                 track_album_artwork_url
             )
             processed_image_array = self.process_album_artwork_image_array(image_array)
-
             kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
             light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
 
-            # self.change_light_color_album_artwork(x, y, lights)
+            self.change_all_lights_constant(lights, light_color_values)
+
             return track_name, track_artist, track_album, track_album_artwork_url
 
-        except:
-            self.change_light_color_normal(lights)
-            return None, None, None, None
+        except Exception as e:
+            self.change_all_lights_to_normal_color(lights)
+            raise SyncError(f"Error syncing lights and music: {e}")
