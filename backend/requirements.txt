@@ -1,0 +1,8 @@
+fastapi
+numpy
+opencv-python
+phue
+python-dotenv
+scikit-learn
+spotipy
+uvicorn[standard]
