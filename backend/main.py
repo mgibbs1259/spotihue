@@ -3,6 +3,8 @@ from typing import List, Union
 
 import spotipy
 import uvicorn
+import celery
+from celery import Celery
 from phue import Bridge
 from spotipy import Spotify
 from fastapi import FastAPI
@@ -73,26 +75,32 @@ async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.put("/execute-spotihue/")
-async def execute_spotihue(
-    lights: Union[List[str], None] = Query(default=None),
-    last_track_album_artwork_url: str = Query(default=None),
-):
-    try:
-        (
-            track_album,
-            track_artist,
-            track_album,
-            track_album_artwork_url,
-        ) = spotihue.sync_lights_music(lights, last_track_album_artwork_url)
-        return {
-            "track_name": track_name,
-            "track_artist": track_artist,
-            "track_album": track_album,
-            "track_album_artwork_url": track_album_artwork_url,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+# Redis to keep track of lights and URL
+# Update cache with current track info from celery worker
+# Celery worker to run long standing run job
+# Kick it off
+
+
+# @app.put("/execute-spotihue/")
+# async def execute_spotihue(
+#     lights: Union[List[str], None] = Query(default=None),
+#     last_track_album_artwork_url: str = Query(default=None),
+# ):
+#     try:
+#         (
+#             track_album,
+#             track_artist,
+#             track_album,
+#             track_album_artwork_url,
+#         ) = spotihue.sync_lights_music(lights, last_track_album_artwork_url)
+#         return {
+#             "track_name": track_name,
+#             "track_artist": track_artist,
+#             "track_album": track_album,
+#             "track_album_artwork_url": track_album_artwork_url,
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.put("/stop-spotihue/")

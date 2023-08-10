@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  backend:
+  #   container_name: spotihue-api
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.api
+  #   env_file:
+  #     - ./backend/.env
+  #   ports:
+  #     - "8000:8000"
+  #   networks:
+  #     - default
+  #   restart: unless-stopped
+
+  # frontend:
+  #   container_name: spotihue-ui
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.ui
+  #   networks:
+  #     - default
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - backend
+
+  redis:
+    image: redis:latest  
+
+  celery:
+    image: celery:latest 
+    command: celery -A your_app.tasks worker --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+networks:
+  default:

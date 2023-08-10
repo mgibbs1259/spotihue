@@ -2,34 +2,18 @@ import requests
 from typing import List, Optional, Tuple, Union
 
 import cv2
+import spotipy
 import numpy as np
 from sklearn.cluster import KMeans
-
-
-class AlbumArtworkRetrievalError(Exception):
-    """Custom exception for errors during album artwork retrieval."""
-
-
-class AlbumArtworkProcessingError(Exception):
-    """Custom exception for errors during album artwork processing."""
-
-
-class KMeansClusterProcessingError(Exception):
-    """Custom exception for errors during k-means cluster processing."""
-
-
-class LightsError(Exception):
-    """Custom exception for errors related to the lights."""
-
-
-class SyncError(Exception):
-    """Custom exception for errors related to syncing the lights and music."""
 
 
 class SpotiHue:
     def __init__(self, spotify, hue_bridge):
         self.spotify = spotify
         self.hue_bridge = hue_bridge
+
+        # Make this optional in the init
+        # self.default_track_name = "Track name not found"
 
     def _extract_album_name(self, track_data: dict) -> Optional[str]:
         """Extracts the album name from track data.
@@ -40,7 +24,9 @@ class SpotiHue:
         Returns:
             str: The name of the album, or None if not available.
         """
-        album_data = track_data.get("album")
+        album_data = track_data.get(
+            "album"
+        )  # can use bracket here if I set default value
         track_name = album_data.get("name")
         return track_name
 
@@ -94,8 +80,13 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).
         """
+        if image_array.ndim != 3 or image_array.shape[2] != 3:
+            raise ValueError(
+                "Input image array must be a 3D array with shape (H, W, 3)"
+            )
+
         if not (1 <= percentage < 100):
-            raise ValueError("percentage must be between 1 and 99.")
+            raise ValueError("Percentage must be between 1 and 99")
 
         dimensions = (
             int(image_array.shape[1] * percentage / 100),
@@ -123,7 +114,7 @@ class SpotiHue:
         """
         if image_array.ndim != 3 or image_array.shape[2] != 3:
             raise ValueError(
-                "input image_array must be a 3D array with shape (H, W, 3)."
+                "Input image array must be a 3D array with shape (H, W, 3)"
             )
 
         return image_array.reshape(-1, 3)
@@ -214,12 +205,22 @@ class SpotiHue:
         Returns:
             bool: True if Spotify is playing a track, False otherwise.
         """
-        current_track = self.spotify.currently_playing()
-        current_track_status = current_track.get("is_playing")
-        if current_track_status:
-            return True
-        else:
+        try:
+            current_track = self.spotify.currently_playing()
+        except spotipy.SpotifyException as e:
+            print(f"Error while fetching current track status: {e}")
             return False
+
+        if current_track is None:
+            print("No current track information is available")
+            return False
+
+        current_track_status = current_track.get("is_playing")
+        if current_track_status is None:
+            print("No current track 'is_playing' status available")
+            return False
+
+        return current_track_status
 
     def retrieve_current_track_information(self) -> Optional[Tuple[str, str, str, str]]:
         """Retrieves information about the current track.
@@ -228,15 +229,24 @@ class SpotiHue:
             tuple: The current track's name, artist, album, and album artwork URL.
             Returns None if the current track information is not available.
         """
-        current_track = self.spotify.currently_playing()
-        if not current_track:
-            return None
+        try:
+            current_track = self.spotify.currently_playing()
+        except spotipy.SpotifyException as e:
+            print(f"Error while fetching current track status: {e}")
+            return
+
+        if current_track is None:
+            print("No current track information is available")
+            return
 
         track_data = current_track.get("item")
-        if not track_data:
-            return None
+        if track_data is None:
+            print("No current track 'item' information is available")
+            return
 
-        track_name = track_data.get("name")
+        track_name = track_data.get(
+            "name"
+        )  # ADD , DEFAULT VALUE HERE; set as variables
         track_album = self._extract_album_name(track_data)
         track_artist = self._extract_artist_name(track_data)
         track_album_artwork_url = self._extract_album_artwork_url(track_data)
@@ -259,20 +269,14 @@ class SpotiHue:
                 f"The current track's album artwork URL {track_album_artwork_url} is empty"
             )
 
-        try:
-            response = requests.get(track_album_artwork_url)
-            response.raise_for_status()  # Raise HTTPError for bad responses
+        response = requests.get(track_album_artwork_url, timeout=3)
+        response.raise_for_status()
 
-            image_bytes = response.content
-            image_bytes_array = np.frombuffer(image_bytes, dtype=np.uint8)
-            image_array = cv2.imdecode(image_bytes_array, cv2.IMREAD_COLOR)
+        image_bytes = response.content
+        image_bytes_array = np.frombuffer(image_bytes, dtype=np.uint8)
+        image_array = cv2.imdecode(image_bytes_array, cv2.IMREAD_COLOR)
 
-            return image_array
-
-        except Exception as e:
-            raise AlbumArtworkRetrievalError(
-                f"Error retrieving the current track's album artwork from {track_album_artwork_url}: {e}"
-            )
+        return image_array
 
     def process_album_artwork_image_array(self, image_array: np.ndarray) -> np.ndarray:
         """Processes the current track's album artwork pixel value array.
@@ -283,24 +287,14 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The processed album artwork pixel value array.
         """
-        try:
-            # Convert from default BGR color format to RGB color format
-            image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+        # Convert from default BGR color format to RGB color format
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
 
-            image_array = self._resize_album_artwork_image_array_by_percentage(
-                image_array
-            )
+        image_array = self._resize_album_artwork_image_array_by_percentage(image_array)
 
-            image_array = self._convert_album_artwork_image_array_to_2D_array(
-                image_array
-            )
+        image_array = self._convert_album_artwork_image_array_to_2D_array(image_array)
 
-            return image_array
-
-        except Exception as e:
-            raise AlbumArtworkProcessingError(
-                f"Error processing the current track's album artwork: {e}"
-            )
+        return image_array
 
     def obtain_kmeans_clusters(self, image_array: np.ndarray, k: int = 3) -> np.ndarray:
         """Returns the cluster centers obtained by fitting k-means with k clusters.
@@ -327,25 +321,19 @@ class SpotiHue:
         Returns:
             List[Tuple[float, float]]: List of xy values representing light color values.
         """
-        try:
-            light_color_values = []
-            for cluster in kmeans_cluster_centers:
-                cluster = self._check_for_black_cluster(cluster)
+        light_color_values = []
+        for cluster in kmeans_cluster_centers:
+            cluster = self._check_for_black_cluster(cluster)
 
-                normalized_rgb_values = self._normalize_rgb_values(cluster)
-                gamma_corrected_values = self.apply_gamma_correction(
-                    normalized_rgb_values
-                )
+            normalized_rgb_values = self._normalize_rgb_values(cluster)
+            gamma_corrected_values = self.apply_gamma_correction(normalized_rgb_values)
 
-                X, Y, Z = self.convert_rgb_to_xyz(gamma_corrected_values)
-                x, y = self.convert_xyz_to_xy(X, Y, Z)
+            X, Y, Z = self.convert_rgb_to_xyz(gamma_corrected_values)
+            x, y = self.convert_xyz_to_xy(X, Y, Z)
 
-                light_color_values.append([x, y])
-            return light_color_values
-        except Exception as e:
-            raise KMeansClusterProcessingError(
-                f"Error processing the k-means clusters into light color values: {e}"
-            )
+            light_color_values.append([x, y])
+
+        return light_color_values
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.
@@ -356,16 +344,13 @@ class SpotiHue:
         Returns:
             None
         """
-        try:
-            current_lights = self.hue_bridge.get_light_objects("name")
-            for light in lights:
-                if not current_lights[light].on:
-                    current_lights[light].on = True
-                current_lights[light].hue = 10000
-                current_lights[light].brightness = 254
-                current_lights[light].saturation = 120
-        except Exception as e:
-            raise LightsError(f"Error changing color of lights: {e}")
+        current_lights = self.hue_bridge.get_light_objects("name")
+        for light in lights:
+            if not current_lights[light].on:
+                current_lights[light].on = True
+            current_lights[light].hue = 10000
+            current_lights[light].brightness = 254
+            current_lights[light].saturation = 120
 
     def change_all_lights_constant(
         self, lights: List[str], light_color_values: List[Tuple[float, float]]
@@ -379,16 +364,11 @@ class SpotiHue:
         Returns:
             None
         """
-        try:
-            current_lights = self.hue_bridge.get_light_objects("name")
-
-            num_colors = len(light_color_values)
-            for i, light in enumerate(lights):
-                color = light_color_values[i % num_colors]
-                current_lights[light].xy = color
-
-        except Exception as e:
-            raise LightsError(f"Error changing color of lights: {e}")
+        current_lights = self.hue_bridge.get_light_objects("name")
+        num_colors = len(light_color_values)
+        for i, light in enumerate(lights):
+            color = light_color_values[i % num_colors]
+            current_lights[light].xy = color
 
     def sync_lights_music(
         self, lights: list, last_track_album_artwork_url: str
@@ -405,28 +385,24 @@ class SpotiHue:
         Returns:
             Tuple[str, str, str, str]: A tuple containing track name, artist name, album name, and album artwork URL.
         """
-        try:
-            (
-                track_name,
-                track_artist,
-                track_album,
-                track_album_artwork_url,
-            ) = self.retrieve_current_track_information()
+        (
+            track_name,
+            track_artist,
+            track_album,
+            track_album_artwork_url,
+        ) = self.retrieve_current_track_information()
 
-            if last_track_album_artwork_url == track_album_artwork_url:
-                return track_name, track_artist, track_album, track_album_artwork_url
-
-            image_array = self.retrieve_current_track_information(
-                track_album_artwork_url
-            )
-            processed_image_array = self.process_album_artwork_image_array(image_array)
-            kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
-            light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
-
-            self.change_all_lights_constant(lights, light_color_values)
-
+        if last_track_album_artwork_url == track_album_artwork_url:
             return track_name, track_artist, track_album, track_album_artwork_url
 
-        except Exception as e:
-            self.change_all_lights_to_normal_color(lights)
-            raise SyncError(f"Error syncing lights and music: {e}")
+        image_array = self.retrieve_current_track_information(track_album_artwork_url)
+        processed_image_array = self.process_album_artwork_image_array(image_array)
+        kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
+        light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
+
+        self.change_all_lights_constant(lights, light_color_values)
+
+        return track_name, track_artist, track_album, track_album_artwork_url
+
+    def celery_worker():
+        pass
