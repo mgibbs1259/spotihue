@@ -2,52 +2,133 @@ import requests
 from typing import List, Optional, Tuple, Union
 
 import cv2
+import phue
 import spotipy
 import numpy as np
 from sklearn.cluster import KMeans
 
 
 class SpotiHue:
-    def __init__(self, spotify, hue_bridge):
-        self.spotify = spotify
-        self.hue_bridge = hue_bridge
+    def __init__(
+        self,
+        spotify_username: str,
+        spotify_scope: str,
+        spotify_client_id: str,
+        spotify_client_secret: str,
+        spotify_redirect_uri: str,
+        hue_bridge_ip_address: str,
+    ):
+        """Initialize a SpotiHue instance.
 
-        # Make this optional in the init
-        # self.default_track_name = "Track name not found"
+        Args:
+            spotify_username (str): Spotify username.
+            spotify_scope (str): Spotify scope.
+            spotify_client_id (str): Spotify client ID.
+            spotify_client_secret (str): Spotify client secret.
+            spotify_redirect_uri (str): Spotify redirect URI.
+            hue_bridge_ip (str): IP address of the Hue bridge.
+        """
+        self._spotify = self._initialize_spotify(
+            spotify_username,
+            spotify_scope,
+            spotify_client_id,
+            spotify_client_secret,
+            spotify_redirect_uri,
+        )
 
-    def _extract_album_name(self, track_data: dict) -> Optional[str]:
-        """Extracts the album name from track data.
+        self._hue = self._initialize_hue(hue_bridge_ip_address)
+
+        self._default_track_name = "unavailable"
+        self._default_track_artist = "unavailable"
+        self._default_track_album = "unavailable"
+        self._default_track_album_artwork_url = "unavailable"
+
+    def _initialize_spotify(
+        self,
+        spotify_username: str,
+        spotify_scope: str,
+        spotify_client_id: str,
+        spotify_client_secret: str,
+        spotify_redirect_uri: str,
+    ) -> spotipy.Spotify:
+        """Initialize the Spotify object.
+
+        Args:
+            username (str): Spotify username.
+            scope (str): Spotify scope.
+            client_id (str): Spotify client ID.
+            client_secret (str): Spotify client secret.
+            redirect_uri (str): Spotify redirect URI.
+
+        Returns:
+            spotipy.Spotify: Initialized Spotify object.
+        """
+        auth_token = spotipy.util.prompt_for_user_token(
+            spotify_username,
+            spotify_scope,
+            spotify_client_id,
+            spotify_client_secret,
+            spotify_redirect_uri,
+        )
+        spotify = spotipy.Spotify(auth=auth_token)
+        return spotify
+
+    def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
+        """Initialize the Hue Bridge object.
+
+        Args:
+            bridge_ip (str): IP address of the Hue bridge.
+
+        Returns:
+            phue.Bridge: Initialized Hue Bridge object.
+        """
+        hue = phue.Bridge(hue_bridge_ip_address)
+        hue.connect()
+        return hue
+
+    def _extract_track_name(self, track_data: dict) -> str:
+        """Extracts the track name from track data.
 
         Args:
             track_data (dict): Track data containing album information.
 
         Returns:
-            str: The name of the album, or None if not available.
+            str: The name of the track, or the default track name if not available.
         """
-        album_data = track_data.get(
-            "album"
-        )  # can use bracket here if I set default value
-        track_name = album_data.get("name")
+        track_name = track_data.get("name", self.default_track_name)
         return track_name
 
-    def _extract_artist_name(self, track_data: dict) -> Optional[str]:
+    def _extract_artist_name(self, track_data: dict) -> str:
         """Extracts the artist name from track data.
 
         Args:
             track_data (dict): Track data containing album information.
 
         Returns:
-            str: The name of the artist, or None if not available.
+            str: The name of the artist, or the default artist name if not available.
         """
         album_data = track_data.get("album")
         artists_data = album_data.get("artists", [])
 
-        if not artists_data:
-            track_artist = None
+        if artists_data:
+            artist_name = artists_data[0].get("name", self._default_track_artist)
         else:
-            track_artist = artists_data[0]["name"]
+            artist_name = self._default_track_artist
 
-        return track_artist
+        return artist_name
+
+    def _extract_album_name(self, track_data: dict) -> str:
+        """Extracts the album name from track data.
+
+        Args:
+            track_data (dict): Track data containing album information.
+
+        Returns:
+            str: The name of the album, or the default album name if not available.
+        """
+        album_data = track_data.get("album")
+        album_name = album_data.get("name", self._default_track_album)
+        return album_name
 
     def _extract_album_artwork_url(self, track_data: dict) -> Optional[str]:
         """Extracts the album artwork URL from track data.
@@ -61,10 +142,12 @@ class SpotiHue:
         album_data = track_data.get("album")
         images_data = album_data.get("images", [])
 
-        if len(images_data) < 2:
-            track_album_artwork_url = None
+        if len(images_data) > 1:
+            track_album_artwork_url = images_data[1].get(
+                "url", self._default_track_album_artwork_url
+            )
         else:
-            track_album_artwork_url = images_data[1]["url"]
+            track_album_artwork_url = self._default_track_album_artwork_url
 
         return track_album_artwork_url
 
@@ -216,42 +299,46 @@ class SpotiHue:
             return False
 
         current_track_status = current_track.get("is_playing")
-        if current_track_status is None:
+        if current_track_status:
+            return True
+        else:
             print("No current track 'is_playing' status available")
             return False
 
-        return current_track_status
-
-    def retrieve_current_track_information(self) -> Optional[Tuple[str, str, str, str]]:
+    def retrieve_current_track_information(self) -> Tuple[str, str, str, str]:
         """Retrieves information about the current track.
 
         Returns:
             tuple: The current track's name, artist, album, and album artwork URL.
-            Returns None if the current track information is not available.
+            Returns default values if the current track information is not available.
         """
+        defaults = (
+            self.default_track_name,
+            self.default_track_artist,
+            self.default_track_album,
+            self.track_album_artwork_url,
+        )
+
         try:
             current_track = self.spotify.currently_playing()
         except spotipy.SpotifyException as e:
             print(f"Error while fetching current track status: {e}")
-            return
+            return defaults
 
         if current_track is None:
             print("No current track information is available")
-            return
+            return defaults
 
         track_data = current_track.get("item")
-        if track_data is None:
+        if track_data:
+            track_name = self._extract_track_name(track_data)
+            track_album = self._extract_album_name(track_data)
+            track_artist = self._extract_artist_name(track_data)
+            track_album_artwork_url = self._extract_album_artwork_url(track_data)
+            return track_name, track_artist, track_album, track_album_artwork_url
+        else:
             print("No current track 'item' information is available")
-            return
-
-        track_name = track_data.get(
-            "name"
-        )  # ADD , DEFAULT VALUE HERE; set as variables
-        track_album = self._extract_album_name(track_data)
-        track_artist = self._extract_artist_name(track_data)
-        track_album_artwork_url = self._extract_album_artwork_url(track_data)
-
-        return track_name, track_artist, track_album, track_album_artwork_url
+            return defaults
 
     def obtain_current_track_album_artwork_image_array(
         self, track_album_artwork_url: str
@@ -264,9 +351,9 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The album artwork pixel value array.
         """
-        if not track_album_artwork_url:
+        if track_album_artwork_url == self._default_track_album_artwork_url:
             raise ValueError(
-                f"The current track's album artwork URL {track_album_artwork_url} is empty"
+                f"The current track's album artwork URL could not be retrieved"
             )
 
         response = requests.get(track_album_artwork_url, timeout=3)

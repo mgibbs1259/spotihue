@@ -1,12 +1,8 @@
 import os
 from typing import List, Union
 
-import spotipy
 import uvicorn
-import celery
 from celery import Celery
-from phue import Bridge
-from spotipy import Spotify
 from fastapi import FastAPI
 from fastapi.params import Query
 from dotenv import load_dotenv
@@ -18,22 +14,13 @@ if os.path.exists(".env"):
     load_dotenv(".env")
 
 
-spotify = Spotify(
-    auth=spotipy.util.prompt_for_user_token(
-        os.environ.get("SPOTIFY_USERNAME"),
-        os.environ.get("SPOTIFY_SCOPE"),
-        os.environ.get("SPOTIFY_CLIENT_ID"),
-        os.environ.get("SPOTIFY_CLIENT_SECRET"),
-        os.environ.get("SPOTIFY_REDIRECT_URI"),
-    )
+spotihue = SpotiHue(
+    os.environ.get("SPOTIFY_USERNAME"),
+    os.environ.get("SPOTIFY_SCOPE"),
+    os.environ.get("SPOTIFY_CLIENT_ID"),
+    os.environ.get("SPOTIFY_CLIENT_SECRET"),
+    os.environ.get("HUE_BRIDGE_IP_ADDRESS"),
 )
-
-
-hue = Bridge(os.environ.get("HUE_BRIDGE_IP_ADDRESS"))
-hue.connect()
-
-
-spotihue = SpotiHue(spotify, hue)
 
 
 app = FastAPI()
