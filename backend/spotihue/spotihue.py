@@ -41,7 +41,7 @@ class SpotiHue:
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
         self._default_track_album = "unavailable"
-        self._default_track_album_artwork_url = "unavailable"
+        self._default_track_album_artwork_url = ""
 
     def _initialize_spotify(
         self,
@@ -95,7 +95,7 @@ class SpotiHue:
         Returns:
             str: The name of the track, or the default track name if not available.
         """
-        track_name = track_data.get("name", self.default_track_name)
+        track_name = track_data.get("name", self._default_track_name)
         return track_name
 
     def _extract_artist_name(self, track_data: dict) -> str:
@@ -163,11 +163,6 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).
         """
-        if image_array.ndim != 3 or image_array.shape[2] != 3:
-            raise ValueError(
-                "Input image array must be a 3D array with shape (H, W, 3)"
-            )
-
         if not (1 <= percentage < 100):
             raise ValueError("Percentage must be between 1 and 99")
 
@@ -195,11 +190,6 @@ class SpotiHue:
         Returns:
             np.ndarray: A 2D array where each row represents a pixel's values.
         """
-        if image_array.ndim != 3 or image_array.shape[2] != 3:
-            raise ValueError(
-                "Input image array must be a 3D array with shape (H, W, 3)"
-            )
-
         return image_array.reshape(-1, 3)
 
     def _check_for_black_cluster(self, cluster: np.ndarray) -> np.ndarray:
@@ -289,7 +279,7 @@ class SpotiHue:
             bool: True if Spotify is playing a track, False otherwise.
         """
         try:
-            current_track = self.spotify.currently_playing()
+            current_track = self._spotify.currently_playing()
         except spotipy.SpotifyException as e:
             print(f"Error while fetching current track status: {e}")
             return False
@@ -313,14 +303,14 @@ class SpotiHue:
             Returns default values if the current track information is not available.
         """
         defaults = (
-            self.default_track_name,
-            self.default_track_artist,
-            self.default_track_album,
-            self.track_album_artwork_url,
+            self._default_track_name,
+            self._default_track_artist,
+            self._default_track_album,
+            self._default_track_album_artwork_url,
         )
 
         try:
-            current_track = self.spotify.currently_playing()
+            current_track = self._spotify.currently_playing()
         except spotipy.SpotifyException as e:
             print(f"Error while fetching current track status: {e}")
             return defaults
@@ -351,10 +341,8 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The album artwork pixel value array.
         """
-        if track_album_artwork_url == self._default_track_album_artwork_url:
-            raise ValueError(
-                f"The current track's album artwork URL could not be retrieved"
-            )
+        if not track_album_artwork_url:
+            raise ValueError(f"The current track's album artwork URL is invalid")
 
         response = requests.get(track_album_artwork_url, timeout=3)
         response.raise_for_status()
@@ -374,11 +362,15 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The processed album artwork pixel value array.
         """
+        if image_array.ndim != 3 or image_array.shape[2] != 3:
+            raise ValueError(
+                "Input image array must be a 3D array with shape (H, W, 3)"
+            )
+
         # Convert from default BGR color format to RGB color format
         image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
 
         image_array = self._resize_album_artwork_image_array_by_percentage(image_array)
-
         image_array = self._convert_album_artwork_image_array_to_2D_array(image_array)
 
         return image_array
