@@ -427,10 +427,10 @@ class SpotiHue:
             cluster = self._check_for_black_cluster(cluster)
 
             normalized_rgb_values = self._normalize_rgb_values(cluster)
-            gamma_corrected_values = self.apply_gamma_correction(normalized_rgb_values)
+            gamma_corrected_values = self._apply_gamma_correction(normalized_rgb_values)
 
-            X, Y, Z = self.convert_rgb_to_xyz(gamma_corrected_values)
-            x, y = self.convert_xyz_to_xy(X, Y, Z)
+            X, Y, Z = self._convert_rgb_to_xyz(gamma_corrected_values)
+            x, y = self._convert_xyz_to_xy(X, Y, Z)
 
             light_color_values.append([x, y])
 
@@ -453,7 +453,7 @@ class SpotiHue:
         Returns:
             None
         """
-        current_lights = self.hue_bridge.get_light_objects("name")
+        current_lights = self._hue.get_light_objects("name")
         for light in lights:
             if not current_lights[light].on:
                 current_lights[light].on = True
@@ -473,7 +473,7 @@ class SpotiHue:
         Returns:
             None
         """
-        current_lights = self.hue_bridge.get_light_objects("name")
+        current_lights = self._hue.get_light_objects("name")
         num_colors = len(light_color_values)
         for i, light in enumerate(lights):
             color = light_color_values[i % num_colors]
@@ -492,6 +492,9 @@ class SpotiHue:
             lights (list): A list of lights to be synchronized.
             last_track_album_artwork_url (str, optional): URL of the previous album artwork. Defaults to "".
         """
+        if not lights:
+            raise ValueError("The 'lights' list should not be empty")
+
         while self.determine_current_track_status():
             (
                 track_name,
@@ -501,7 +504,7 @@ class SpotiHue:
             ) = self.retrieve_current_track_information()
 
             if last_track_album_artwork_url != track_album_artwork_url:
-                image_array = self.retrieve_current_track_information(
+                image_array = self.obtain_current_track_album_artwork_image_array(
                     track_album_artwork_url
                 )
                 processed_image_array = self.process_album_artwork_image_array(
@@ -510,7 +513,7 @@ class SpotiHue:
                 kmeans_cluster_centers = self.obtain_kmeans_clusters(
                     processed_image_array
                 )
-                light_color_values = self.process_kmeans_clusters(
+                light_color_values = self.process_kmeans_clusters_to_light_color_values(
                     kmeans_cluster_centers
                 )
 
