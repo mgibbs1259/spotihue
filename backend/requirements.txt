@@ -4,6 +4,7 @@ opencv-python
 phue
 pydantic
 python-dotenv
+redis
 scikit-learn
 spotipy
 uvicorn[standard]

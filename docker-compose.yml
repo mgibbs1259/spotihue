@@ -30,7 +30,7 @@ services:
 
   celery:
     image: celery:latest 
-    command: celery -A your_app.tasks worker --loglevel=info
+    command: celery -A spotihue.tasks worker --loglevel=info
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:

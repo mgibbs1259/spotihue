@@ -164,9 +164,6 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).
         """
-        if not (1 <= percentage < 100):
-            raise ValueError("percentage must be between 1 and 99")
-
         dimensions = (
             int(image_array.shape[1] * percentage / 100),
             int(image_array.shape[0] * percentage / 100),
@@ -269,8 +266,10 @@ class SpotiHue:
             Tuple[float, float]: xy values after the XYZ to xy conversion.
         """
         total = X + Y + Z
+
         x = round(X / total, 4)
         y = round(Y / total, 4)
+
         return x, y
 
     def determine_current_track_status(self) -> bool:
@@ -437,11 +436,7 @@ class SpotiHue:
         Returns:
             List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
         """
-        try:
-            return [light.name for light in self._hue.lights]
-        except phue.PhueException as e:
-            print(f"Error retrieving available lights: {e}")
-            return []
+        return [light.name for light in self._hue.lights]
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.
@@ -478,9 +473,7 @@ class SpotiHue:
             color = light_color_values[i % num_colors]
             current_lights[light].xy = color
 
-    def sync_lights_music(
-        self, lights: list, last_track_album_artwork_url: str
-    ) -> Tuple[str, str, str, str]:
+    def sync_lights_music(self, lights: list) -> Tuple[str, str, str, str]:
         """Synchronize the lights with the current track's album artwork.
         This function retrieves information about the current track being played on Spotify,
         compares the album artwork URL with the previous one, and updates the lights' colors
@@ -488,7 +481,6 @@ class SpotiHue:
 
         Args:
             lights (list): A list of lights to be synchronized.
-            last_track_album_artwork_url (str): The last track's album artwork URL.
 
         Returns:
             Tuple[str, str, str, str]: A tuple containing track name, artist name, album name, and album artwork URL.
@@ -511,6 +503,3 @@ class SpotiHue:
         self.change_all_lights_constant(lights, light_color_values)
 
         return track_name, track_artist, track_album, track_album_artwork_url
-
-    def celery_worker():
-        pass

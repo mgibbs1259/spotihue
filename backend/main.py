@@ -1,12 +1,12 @@
 import os
 from typing import List, Union
 
+import redis
+import celery
 import uvicorn
-from celery import Celery
-from fastapi import FastAPI
-from fastapi.params import Query
 from dotenv import load_dotenv
 from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 
 from spotihue.spotihue import SpotiHue
 
@@ -24,6 +24,8 @@ spotihue = SpotiHue(
 )
 
 
+redis_client = redis.Redis(host="localhost", port=6379, db=0)
+celery_app = celery.Celery("spotihue", broker="redis://localhost:6379/0")
 app = FastAPI()
 
 
@@ -33,72 +35,58 @@ class StandardResponse(BaseModel):
     data: any = None
 
 
-@app.get("/available-lights/")
-async def retrieve_available_lights():
-    available_lights = spotihue.retrieve_available_lights()
-
-    if available_lights:
-        response = StandardResponse(
-            success=True,
-            message="Available lights retrieved successfully",
-            data=available_lights,
-        )
-    else:
-        response = StandardResponse(success=False, message="No available lights")
-
-    return response
+@celery_app.task
+def run_spotihue():
+    return spotihue.sync_lights_music()
 
 
-@app.get("/current-track-information/")
-async def retrieve_current_track_information():
-    # Get this from Redis for display purposes
-    pass
+# @app.get("/available-lights/")
+# async def retrieve_available_lights():
+#     available_lights = spotihue.retrieve_available_lights()
+
+#     if available_lights:
+#         response = StandardResponse(
+#             success=True,
+#             message="Available lights retrieved successfully",
+#             data=available_lights,
+#         )
+#     else:
+#         response = StandardResponse(success=False, message="No available lights")
+
+#     return response
+
+
+# @app.get("/current-track-information/")
+# async def retrieve_current_track_information():
+#     # Get this from Redis for display purposes
+#     pass
 
 
 @app.put("/start-spotihue/")
-async def start_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    try:
-        spotihue.change_all_lights_to_normal_color(lights)
-        return {"status": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+async def start_spotihue(lights: List[str]):
+    spotihue_status = redis_client.get("spotihue")
 
+    if spotihue_status:
+        raise HTTPException(status_code=400, detail="spotihue is already running")
 
-# Redis to keep track of lights and URL
-# Update cache with current track info from celery worker
-# Celery worker to run long standing run job
-# Kick it off
+    spotihue.change_all_lights_to_normal_color(lights)
+    task = run_spotihue.delay()
+    redis_client.set("spotihue", task.id)
 
-
-# @app.put("/execute-spotihue/")
-# async def execute_spotihue(
-#     lights: Union[List[str], None] = Query(default=None),
-#     last_track_album_artwork_url: str = Query(default=None),
-# ):
-#     try:
-#         (
-#             track_album,
-#             track_artist,
-#             track_album,
-#             track_album_artwork_url,
-#         ) = spotihue.sync_lights_music(lights, last_track_album_artwork_url)
-#         return {
-#             "track_name": track_name,
-#             "track_artist": track_artist,
-#             "track_album": track_album,
-#             "track_album_artwork_url": track_album_artwork_url,
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail="Internal server error")
+    return StandardResponse(success=True, message="spotihue started")
 
 
 @app.put("/stop-spotihue/")
-async def stop_spotihue(lights: Union[List[str], None] = Query(default=None)):
-    try:
+async def stop_spotihue():
+    spotihue_status = redis_client.get("spotihue")
+
+    if spotihue_status:
+        celery_app.control.revoke(spotihue_status.decode(), terminate=True)
+        redis_client.delete("spotihue")
         spotihue.change_all_lights_to_normal_color(lights)
-        return {"status": False}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return StandardResponse(success=True, message="spotihue stopped")
+    else:
+        raise HTTPException(status_code=400, detail="spotihue is not running")
 
 
 if __name__ == "__main__":
