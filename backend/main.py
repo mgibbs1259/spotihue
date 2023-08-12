@@ -41,20 +41,39 @@ class StandardResponse(BaseModel):
 #     return spotihue.sync_lights_music()
 
 
-@fast_app.get("/available-lights/")
+@fast_app.get("/available-lights")
 async def retrieve_available_lights():
-    available_lights = spotihue.retrieve_available_lights()
+    try:
+        available_lights = spotihue.retrieve_available_lights()
 
-    if available_lights:
-        response = StandardResponse(
-            success=True,
-            message="Available lights retrieved successfully",
-            data=available_lights,
-        )
-    else:
-        response = StandardResponse(success=False, message="No available lights")
+        if available_lights:
+            response = StandardResponse(
+                success=True,
+                message="Available lights retrieved successfully",
+                data=available_lights,
+            )
+        else:
+            response = StandardResponse(success=False, message="No available lights")
 
-    return response
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {e}")
+
+
+# @app.post("/selected-lights")
+# def store_selected_lights(lights: List[str]):
+#     try:
+#         if not lights:
+#             raise HTTPException(status_code=400, detail="Selected lights list is required")
+
+#         # Store the list of lights in Redis with an 8-hour TTL (28800 seconds)
+#         redis_client.setex("lights", 28800, ",".join(lights))
+
+#         return StandardResponse(success=True, message="Selected lights list stored in Redis")
+
+#     except redis.RedisError as redis_error:
+#         raise HTTPException(status_code=500, detail=f"Redis Error: {str(redis_error)}")
 
 
 @fast_app.put("/test/")
