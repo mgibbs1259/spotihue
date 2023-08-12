@@ -1,8 +1,11 @@
+import time
+import random
 import requests
 from typing import List, Optional, Tuple, Union
 
 import cv2
 import phue
+import redis
 import spotipy
 import numpy as np
 from sklearn.cluster import KMeans
@@ -164,6 +167,9 @@ class SpotiHue:
         Returns:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).
         """
+        if not (1 <= percentage < 100):
+            raise ValueError("percentage must be between 1 and 99.")
+
         dimensions = (
             int(image_array.shape[1] * percentage / 100),
             int(image_array.shape[0] * percentage / 100),
@@ -473,33 +479,42 @@ class SpotiHue:
             color = light_color_values[i % num_colors]
             current_lights[light].xy = color
 
-    def sync_lights_music(self, lights: list) -> Tuple[str, str, str, str]:
+    def sync_lights_music(
+        self, lights: list, last_track_album_artwork_url: str = ""
+    ) -> None:
         """Synchronize the lights with the current track's album artwork.
-        This function retrieves information about the current track being played on Spotify,
-        compares the album artwork URL with the previous one, and updates the lights' colors
-        based on the album artwork colors if it's a new album.
+        If there is a track currently playing on Spotify, this function retrieves
+        essential track information. It then compares the album artwork URL
+        with the previous one, and, if it differs, it adjusts the lights'
+        colors to the most prominent colors in the album artwork.
 
         Args:
             lights (list): A list of lights to be synchronized.
-
-        Returns:
-            Tuple[str, str, str, str]: A tuple containing track name, artist name, album name, and album artwork URL.
+            last_track_album_artwork_url (str, optional): URL of the previous album artwork. Defaults to "".
         """
-        (
-            track_name,
-            track_artist,
-            track_album,
-            track_album_artwork_url,
-        ) = self.retrieve_current_track_information()
+        while self.determine_current_track_status():
+            (
+                track_name,
+                track_artist,
+                track_album,
+                track_album_artwork_url,
+            ) = self.retrieve_current_track_information()
 
-        if last_track_album_artwork_url == track_album_artwork_url:
-            return track_name, track_artist, track_album, track_album_artwork_url
+            if last_track_album_artwork_url != track_album_artwork_url:
+                image_array = self.retrieve_current_track_information(
+                    track_album_artwork_url
+                )
+                processed_image_array = self.process_album_artwork_image_array(
+                    image_array
+                )
+                kmeans_cluster_centers = self.obtain_kmeans_clusters(
+                    processed_image_array
+                )
+                light_color_values = self.process_kmeans_clusters(
+                    kmeans_cluster_centers
+                )
 
-        image_array = self.retrieve_current_track_information(track_album_artwork_url)
-        processed_image_array = self.process_album_artwork_image_array(image_array)
-        kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
-        light_color_values = self.process_kmeans_clusters(kmeans_cluster_centers)
+                self.change_all_lights_constant(lights, light_color_values)
 
-        self.change_all_lights_constant(lights, light_color_values)
-
-        return track_name, track_artist, track_album, track_album_artwork_url
+            sleep_duration = random.uniform(3, 5)
+            time.sleep(sleep_duration)

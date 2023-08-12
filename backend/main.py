@@ -24,9 +24,9 @@ spotihue = SpotiHue(
 )
 
 
-redis_client = redis.Redis(host="localhost", port=6379, db=0)
-celery_app = celery.Celery("spotihue", broker="redis://localhost:6379/0")
-app = FastAPI()
+# redis_client = redis.Redis(host="localhost", port=6379, db=0)
+# celery_app = celery.Celery("spotihue", broker="redis://localhost:6379/0")
+fast_app = FastAPI()
 
 
 class StandardResponse(BaseModel):
@@ -35,9 +35,16 @@ class StandardResponse(BaseModel):
     data: any = None
 
 
-@celery_app.task
-def run_spotihue():
-    return spotihue.sync_lights_music()
+@fast_app.put("/test/")
+async def start_spotihue(lights: List[str]):
+    spotihue.change_all_lights_to_normal_color(lights)
+
+    return StandardResponse(success=True, message="spotihue started")
+
+
+# @celery_app.task
+# def run_spotihue():
+#     return spotihue.sync_lights_music()
 
 
 # @app.get("/available-lights/")
@@ -62,32 +69,32 @@ def run_spotihue():
 #     pass
 
 
-@app.put("/start-spotihue/")
-async def start_spotihue(lights: List[str]):
-    spotihue_status = redis_client.get("spotihue")
+# @fast_app.put("/start-spotihue/")
+# async def start_spotihue(lights: List[str]):
+#     spotihue_status = redis_client.get("spotihue")
 
-    if spotihue_status:
-        raise HTTPException(status_code=400, detail="spotihue is already running")
+#     if spotihue_status:
+#         raise HTTPException(status_code=400, detail="spotihue is already running")
 
-    spotihue.change_all_lights_to_normal_color(lights)
-    task = run_spotihue.delay()
-    redis_client.set("spotihue", task.id)
+#     spotihue.change_all_lights_to_normal_color(lights)
+#     task = run_spotihue.delay()
+#     redis_client.set("spotihue", task.id)
 
-    return StandardResponse(success=True, message="spotihue started")
+#     return StandardResponse(success=True, message="spotihue started")
 
 
-@app.put("/stop-spotihue/")
-async def stop_spotihue():
-    spotihue_status = redis_client.get("spotihue")
+# @fast_app.put("/stop-spotihue/")
+# async def stop_spotihue():
+#     spotihue_status = redis_client.get("spotihue")
 
-    if spotihue_status:
-        celery_app.control.revoke(spotihue_status.decode(), terminate=True)
-        redis_client.delete("spotihue")
-        spotihue.change_all_lights_to_normal_color(lights)
-        return StandardResponse(success=True, message="spotihue stopped")
-    else:
-        raise HTTPException(status_code=400, detail="spotihue is not running")
+#     if spotihue_status:
+#         celery_app.control.revoke(spotihue_status.decode(), terminate=True)
+#         redis_client.delete("spotihue")
+#         spotihue.change_all_lights_to_normal_color(lights)
+#         return StandardResponse(success=True, message="spotihue stopped")
+#     else:
+#         raise HTTPException(status_code=400, detail="spotihue is not running")
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(fast_app, host="0.0.0.0", port=8000)
