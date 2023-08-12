@@ -493,7 +493,7 @@ class SpotiHue:
             last_track_album_artwork_url (str, optional): URL of the previous album artwork. Defaults to "".
         """
         if not lights:
-            raise ValueError("The 'lights' list should not be empty")
+            raise ValueError("lights list should not be empty")
 
         while self.determine_current_track_status():
             (
