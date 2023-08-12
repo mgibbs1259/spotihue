@@ -3,6 +3,7 @@ numpy
 opencv-python
 phue
 pre-commit
+pydantic
 pytest
 python-dotenv
 scikit-learn

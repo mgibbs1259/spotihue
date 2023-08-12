@@ -6,6 +6,7 @@ from celery import Celery
 from fastapi import FastAPI
 from fastapi.params import Query
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from spotihue.spotihue import SpotiHue
 
@@ -26,31 +27,32 @@ spotihue = SpotiHue(
 app = FastAPI()
 
 
+class StandardResponse(BaseModel):
+    success: bool
+    message: str
+    data: any = None
+
+
 @app.get("/available-lights/")
-async def retrieve_light_information():
-    try:
-        return [light.name for light in hue.lights]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+async def retrieve_available_lights():
+    available_lights = spotihue.retrieve_available_lights()
+
+    if available_lights:
+        response = StandardResponse(
+            success=True,
+            message="Available lights retrieved successfully",
+            data=available_lights,
+        )
+    else:
+        response = StandardResponse(success=False, message="No available lights")
+
+    return response
 
 
 @app.get("/current-track-information/")
 async def retrieve_current_track_information():
-    try:
-        (
-            track_name,
-            track_artist,
-            track_album,
-            track_album_artwork_url,
-        ) = spotihue.retrieve_current_track_information()
-        return {
-            "track_name": track_name,
-            "track_artist": track_artist,
-            "track_album": track_album,
-            "track_album_artwork_url": track_album_artwork_url,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    # Get this from Redis for display purposes
+    pass
 
 
 @app.put("/start-spotihue/")

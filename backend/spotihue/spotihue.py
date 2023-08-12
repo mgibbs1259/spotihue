@@ -41,7 +41,7 @@ class SpotiHue:
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
         self._default_track_album = "unavailable"
-        self._default_track_album_artwork_url = ""
+        self._default_track_album_artwork_url = "unavailable"
 
     def _initialize_spotify(
         self,
@@ -63,14 +63,15 @@ class SpotiHue:
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
-        auth_token = spotipy.util.prompt_for_user_token(
-            spotify_username,
-            spotify_scope,
-            spotify_client_id,
-            spotify_client_secret,
-            spotify_redirect_uri,
+        spotify = spotipy.Spotify(
+            auth=spotipy.util.prompt_for_user_token(
+                spotify_username,
+                spotify_scope,
+                spotify_client_id,
+                spotify_client_secret,
+                spotify_redirect_uri,
+            )
         )
-        spotify = spotipy.Spotify(auth=auth_token)
         return spotify
 
     def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
@@ -164,7 +165,7 @@ class SpotiHue:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).
         """
         if not (1 <= percentage < 100):
-            raise ValueError("Percentage must be between 1 and 99")
+            raise ValueError("percentage must be between 1 and 99")
 
         dimensions = (
             int(image_array.shape[1] * percentage / 100),
@@ -188,7 +189,7 @@ class SpotiHue:
             image_array (np.ndarray): The input image array in 3D format (H x W x 3).
 
         Returns:
-            np.ndarray: A 2D array where each row represents a pixel's values.
+            np.ndarray: The output image array in 2D format where each row represents a pixel's values (# pixels, 3).
         """
         return image_array.reshape(-1, 3)
 
@@ -339,10 +340,10 @@ class SpotiHue:
             track_album_artwork_url (str): The current track's album artwork URL.
 
         Returns:
-            numpy.ndarray: The album artwork pixel value array.
+            numpy.ndarray: The album artwork pixel value array in 3D format (H x W x 3).
         """
-        if not track_album_artwork_url:
-            raise ValueError(f"The current track's album artwork URL is invalid")
+        if track_album_artwork_url == self._default_track_album_artwork_url:
+            raise ValueError(f"track_album_artwork_url is invalid")
 
         response = requests.get(track_album_artwork_url, timeout=3)
         response.raise_for_status()
@@ -357,15 +358,16 @@ class SpotiHue:
         """Processes the current track's album artwork pixel value array.
 
         Args:
-            image_array (numpy.ndarray): The album artwork pixel value array.
+            image_array (numpy.ndarray): The album artwork pixel value array in 3D format (H x W x 3).
 
         Returns:
-            numpy.ndarray: The processed album artwork pixel value array.
+            numpy.ndarray: The processed album artwork pixel value array in 2D format (# pixels, 3).
         """
+        if not isinstance(image_array, np.ndarray):
+            raise ValueError("image_array should be a numpy.ndarray")
+
         if image_array.ndim != 3 or image_array.shape[2] != 3:
-            raise ValueError(
-                "Input image array must be a 3D array with shape (H, W, 3)"
-            )
+            raise ValueError("image_array must be a 3D array with shape (H, W, 3)")
 
         # Convert from default BGR color format to RGB color format
         image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
@@ -379,17 +381,26 @@ class SpotiHue:
         """Returns the cluster centers obtained by fitting k-means with k clusters.
 
         Args:
-            image_array (numpy.ndarray): The processed album artwork pixel value array.
+            image_array (numpy.ndarray): The processed album artwork pixel value array in 2D format (# pixels, 3).
             k (int, optional): The number of clusters for k-means. Default is 3.
 
         Returns:
             numpy.ndarray: The cluster centers obtained by fitting k-means with k clusters.
         """
+        if not isinstance(image_array, np.ndarray):
+            raise ValueError("image_array should be a numpy.ndarray")
+
+        if len(image_array.shape) != 2:
+            raise ValueError("image_array must be a 2D array with shape (# pixels, 3)")
+
+        if k <= 0:
+            raise ValueError("k should be a positive integer")
+
         kmeans = KMeans(n_init=10, n_clusters=k, random_state=1259)
         kmeans.fit(image_array)
         return kmeans.cluster_centers_
 
-    def process_kmeans_clusters(
+    def process_kmeans_clusters_to_light_color_values(
         self, kmeans_cluster_centers: np.ndarray
     ) -> List[Tuple[float, float]]:
         """Processes k-means cluster centers to obtain light color values.
@@ -400,6 +411,12 @@ class SpotiHue:
         Returns:
             List[Tuple[float, float]]: List of xy values representing light color values.
         """
+        if not isinstance(kmeans_cluster_centers, np.ndarray):
+            raise ValueError("kmeans_cluster_centers should be a numpy.ndarray")
+
+        if len(kmeans_cluster_centers.shape) != 2:
+            raise ValueError("kmeans_cluster_centers should be a 2D array")
+
         light_color_values = []
         for cluster in kmeans_cluster_centers:
             cluster = self._check_for_black_cluster(cluster)
@@ -413,6 +430,18 @@ class SpotiHue:
             light_color_values.append([x, y])
 
         return light_color_values
+
+    def retrieve_available_lights(self) -> List[str]:
+        """Retrieves the names of available lights.
+
+        Returns:
+            List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
+        """
+        try:
+            return [light.name for light in self._hue.lights]
+        except phue.PhueException as e:
+            print(f"Error retrieving available lights: {e}")
+            return []
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.

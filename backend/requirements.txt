@@ -2,6 +2,7 @@ fastapi
 numpy
 opencv-python
 phue
+pydantic
 python-dotenv
 scikit-learn
 spotipy
