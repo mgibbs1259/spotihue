@@ -11,6 +11,12 @@ from fastapi import FastAPI, HTTPException
 from spotihue.spotihue import SpotiHue
 
 
+class StandardResponse(BaseModel):
+    success: bool
+    message: str
+    data: Any = None
+
+
 if os.path.exists(".env"):
     load_dotenv(".env")
 
@@ -28,12 +34,6 @@ spotihue = SpotiHue(
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 celery_app = celery.Celery("spotihue", broker="redis://localhost:6379/0")
 fast_app = FastAPI()
-
-
-class StandardResponse(BaseModel):
-    success: bool
-    message: str
-    data: Any = None
 
 
 @celery_app.task

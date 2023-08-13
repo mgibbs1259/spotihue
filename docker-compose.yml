@@ -2,17 +2,17 @@ version: '3'
 
 services:
   backend:
-  #   container_name: spotihue-api
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile.api
-  #   env_file:
-  #     - ./backend/.env
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - default
-  #   restart: unless-stopped
+    container_name: spotihue-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    networks:
+      - default
+    restart: unless-stopped
 
   # frontend:
   #   container_name: spotihue-ui
