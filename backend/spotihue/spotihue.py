@@ -44,7 +44,7 @@ class SpotiHue:
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
         self._default_track_album = "unavailable"
-        self._default_track_album_artwork_url = "unavailable"
+        self._default_track_album_artwork_url = ""
 
     def _initialize_spotify(
         self,
@@ -158,7 +158,7 @@ class SpotiHue:
     def _resize_album_artwork_image_array_by_percentage(
         self, image_array: np.ndarray, percentage: Union[int, float] = 50
     ) -> np.ndarray:
-        """Resize the current track's album artwork to a given percentage of its original size.
+        """Resize the track's album artwork to a given percentage of its original size.
 
         Args:
             image_array (numpy.ndarray): The input image array in 3D format (H x W x 3).
@@ -183,7 +183,7 @@ class SpotiHue:
     def _convert_album_artwork_image_array_to_2D_array(
         self, image_array: np.ndarray
     ) -> np.ndarray:
-        """Converts the current track's album artwork from a 3D to a 2D array where each row
+        """Converts the track's album artwork from a 3D to a 2D array where each row
         corresponds to a pixel's values. This is useful for various image processing
         tasks, including k-means clustering and other analyses that treat each pixel
         as a data point with features.
@@ -336,19 +336,24 @@ class SpotiHue:
             print("No current track 'item' information is available")
             return defaults
 
-    def obtain_current_track_album_artwork_image_array(
+    def obtain_track_album_artwork_image_array(
         self, track_album_artwork_url: str
     ) -> np.ndarray:
-        """Retrieves the current track's album artwork pixel value array.
+        """Retrieves the track's album artwork pixel value array.
 
         Args:
-            track_album_artwork_url (str): The current track's album artwork URL.
+            track_album_artwork_url (str): The track's album artwork URL.
 
         Returns:
             numpy.ndarray: The album artwork pixel value array in 3D format (H x W x 3).
         """
-        if track_album_artwork_url == self._default_track_album_artwork_url:
-            raise ValueError(f"track_album_artwork_url is invalid")
+        if (
+            not track_album_artwork_url
+            or track_album_artwork_url == self._default_track_album_artwork_url
+        ):
+            raise ValueError(
+                f"track_album_artwork_url {track_album_artwork_url} is invalid"
+            )
 
         response = requests.get(track_album_artwork_url, timeout=3)
         response.raise_for_status()
@@ -360,7 +365,7 @@ class SpotiHue:
         return image_array
 
     def process_album_artwork_image_array(self, image_array: np.ndarray) -> np.ndarray:
-        """Processes the current track's album artwork pixel value array.
+        """Processes the track's album artwork pixel value array.
 
         Args:
             image_array (numpy.ndarray): The album artwork pixel value array in 3D format (H x W x 3).
@@ -464,7 +469,7 @@ class SpotiHue:
     def change_all_lights_constant(
         self, lights: List[str], light_color_values: List[Tuple[float, float]]
     ) -> None:
-        """Change all specified lights to the most prominent colors in the current track's album artwork.
+        """Change all specified lights to the most prominent colors in the track's album artwork.
 
         Args:
             lights (List[str]): List of light names to be modified.
@@ -479,45 +484,31 @@ class SpotiHue:
             color = light_color_values[i % num_colors]
             current_lights[light].xy = color
 
-    def sync_lights_music(
-        self, lights: list, last_track_album_artwork_url: str = ""
-    ) -> None:
-        """Synchronize the lights with the current track's album artwork.
-        If there is a track currently playing on Spotify, this function retrieves
-        essential track information. It then compares the album artwork URL
-        with the previous one, and, if it differs, it adjusts the lights'
-        colors to the most prominent colors in the album artwork.
+    def sync_lights_music(self, track_album_artwork_url: str, lights: list) -> None:
+        """Synchronize the track's album artwork and lights.
 
         Args:
+            track_album_artwork_url (str): The track's album artwork URL.
             lights (list): A list of lights to be synchronized.
-            last_track_album_artwork_url (str, optional): URL of the previous album artwork. Defaults to "".
         """
+        if (
+            not track_album_artwork_url
+            or track_album_artwork_url == self._default_track_album_artwork_url
+        ):
+            raise ValueError(
+                f"track_album_artwork_url {track_album_artwork_url} is invalid"
+            )
+
         if not lights:
             raise ValueError("lights list should not be empty")
 
-        while self.determine_current_track_status():
-            (
-                track_name,
-                track_artist,
-                track_album,
-                track_album_artwork_url,
-            ) = self.retrieve_current_track_information()
+        image_array = self.obtain_track_album_artwork_image_array(
+            track_album_artwork_url
+        )
+        processed_image_array = self.process_album_artwork_image_array(image_array)
+        kmeans_cluster_centers = self.obtain_kmeans_clusters(processed_image_array)
+        light_color_values = self.process_kmeans_clusters_to_light_color_values(
+            kmeans_cluster_centers
+        )
 
-            if last_track_album_artwork_url != track_album_artwork_url:
-                image_array = self.obtain_current_track_album_artwork_image_array(
-                    track_album_artwork_url
-                )
-                processed_image_array = self.process_album_artwork_image_array(
-                    image_array
-                )
-                kmeans_cluster_centers = self.obtain_kmeans_clusters(
-                    processed_image_array
-                )
-                light_color_values = self.process_kmeans_clusters_to_light_color_values(
-                    kmeans_cluster_centers
-                )
-
-                self.change_all_lights_constant(lights, light_color_values)
-
-            sleep_duration = random.uniform(3, 5)
-            time.sleep(sleep_duration)
+        self.change_all_lights_constant(lights, light_color_values)
