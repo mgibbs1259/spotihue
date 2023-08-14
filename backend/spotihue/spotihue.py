@@ -156,13 +156,13 @@ class SpotiHue:
         return track_album_artwork_url
 
     def _resize_album_artwork_image_array_by_percentage(
-        self, image_array: np.ndarray, percentage: Union[int, float] = 50
+        self, image_array: np.ndarray, percentage: Union[int, float] = 60
     ) -> np.ndarray:
         """Resize the track's album artwork to a given percentage of its original size.
 
         Args:
             image_array (numpy.ndarray): The input image array in 3D format (H x W x 3).
-            percentage (Union[int, float]): The desired size percentage between 1 and 99. Defaults to 50.
+            percentage (Union[int, float]): The desired size percentage between 1 and 99. Defaults to 60.
 
         Returns:
             numpy.ndarray: The resized image array in 3D format (H x W x 3).

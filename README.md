@@ -15,7 +15,8 @@ If the app is not registered and the button is not pressed, press the button and
 
 
 ## Fast API
-uvicorn main:fast_app --reload
+docker compose up 
+localhost:8000/docs
 
 # Develop
 

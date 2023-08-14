@@ -1,4 +1,7 @@
 import os
+import time
+import random
+import logging
 from typing import Any, List, Union
 
 import redis
@@ -31,23 +34,27 @@ spotihue = SpotiHue(
 )
 
 
-redis_client = redis.Redis(host="host.docker.internal", port=6379, db=0)
-celery_app = celery.Celery("celery_app", broker="redis://host.docker.internal:6379/0")
+redis_client = redis.Redis(host="redis", port=6379, db=0)
+celery_app = celery.Celery("celery_app", broker="redis://redis:6379")
 fast_app = FastAPI()
 
 
 @celery_app.task
 def run_spotihue(lights: List[str]) -> None:
+    logging.info("Running spotihue")
+
     while spotihue.determine_current_track_status():
         last_track_info = redis_client.hgetall("current_track_information")
-        last_track_album_artwork_url = last_track_info.get("track_album_artwork_url")
+        last_track_album_artwork_url = last_track_info.get(b"track_album_artwork_url")
+        if last_track_album_artwork_url:
+            last_track_album_artwork_url = last_track_album_artwork_url.decode("utf-8")
 
         (
             track_name,
             track_artist,
             track_album,
             track_album_artwork_url,
-        ) = self.retrieve_current_track_information()
+        ) = spotihue.retrieve_current_track_information()
 
         redis_client.hmset(
             "current_track_information",
@@ -60,9 +67,10 @@ def run_spotihue(lights: List[str]) -> None:
         )
 
         if last_track_album_artwork_url != track_album_artwork_url:
-            spotihue.sync_lights_music(lights)
+            logging.info("Syncing lights")
+            spotihue.sync_lights_music(track_album_artwork_url, lights)
 
-        sleep_duration = random.uniform(3, 5)
+        sleep_duration = random.uniform(2, 4)
         time.sleep(sleep_duration)
 
 
@@ -108,24 +116,25 @@ def store_selected_lights(lights: List[str]):
 async def start_spotihue(lights: List[str] = None):
     try:
         if not lights:
-            stored_lights = redis_client.get("lights")
-            if stored_lights:
-                lights = stored_lights.split(",")
-            else:
-                raise ValueError("Empty list of lights")
+            # stored_lights = redis_client.get("lights")
+            # if stored_lights:
+            #     lights = stored_lights.split(",")
+            # else:
+            raise ValueError("Empty list of lights")
 
         spotihue_status = redis_client.get("spotihue")
-        if spotihue_status:
-            response = StandardResponse(
-                success=True, message="spotihue is already running"
-            )
-        else:
-            spotihue.change_all_lights_to_normal_color(lights)
+        print(spotihue_status)
+        # if spotihue_status:
+        #     response = StandardResponse(
+        #         success=True, message="spotihue is already running"
+        #     )
+        # else:
+        spotihue.change_all_lights_to_normal_color(lights)
 
-            task = run_spotihue.delay(lights)
-            redis_client.set("spotihue", str(task.id))
+        task = run_spotihue.delay(lights)
+        redis_client.set("spotihue", str(task.id))
 
-            response = StandardResponse(success=True, message="spotihue started")
+        response = StandardResponse(success=True, message="spotihue started")
 
     except redis.exceptions.RedisError as redis_err:
         raise HTTPException(status_code=500, detail=f"Redis Error: {redis_err}")
