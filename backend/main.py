@@ -105,10 +105,16 @@ def store_selected_lights(lights: List[str]):
 
 
 @fast_app.put("/start-spotihue")
-async def start_spotihue(lights: List[str]):
+async def start_spotihue(lights: List[str] = None):
     try:
-        spotihue_status = redis_client.get("spotihue")
+        if not lights:
+            stored_lights = redis_client.get("lights")
+            if stored_lights:
+                lights = stored_lights.split(",")
+            else:
+                raise ValueError("Empty list of lights")
 
+        spotihue_status = redis_client.get("spotihue")
         if spotihue_status:
             response = StandardResponse(
                 success=True, message="spotihue is already running"
@@ -149,10 +155,16 @@ async def retrieve_current_track_information():
 
 
 @fast_app.put("/stop-spotihue")
-async def stop_spotihue(lights: List[str]):
+async def stop_spotihue(lights: List[str] = None):
     try:
-        spotihue_status = redis_client.get("spotihue")
+        if not lights:
+            stored_lights = redis_client.get("lights")
+            if stored_lights:
+                lights = stored_lights.split(",")
+            else:
+                raise ValueError("Empty list of lights")
 
+        spotihue_status = redis_client.get("spotihue")
         if spotihue_status:
             celery_app.control.revoke(spotihue_status, terminate=True)
             spotihue.change_all_lights_to_normal_color(lights)
