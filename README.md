@@ -24,7 +24,7 @@ For additional information on the Spotify API, look [here](https://developer.spo
 # Run
 1) `docker compose up`
 2) Press and hold button on top of Hue Bridge for about 3 seconds
-3) Go to localhost:8000/docs to interact with the spotihue API
+3) Go to `localhost:8000/docs` to interact with the spotihue API
 
 # Develop
 
