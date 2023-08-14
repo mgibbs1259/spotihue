@@ -4,7 +4,7 @@
 
 If you don't have Docker already installed, follow these [instructions](https://www.docker.com/products/docker-desktop/). Then, in the backend directory, create a copy of .example-env file and call it .env
 
-## Hue Bridge
+## Hue Bridge IP
 To find the Hue Bridge IP address, open your Hue app and go to Settings > My Hue System > Philips Hue > i > IP-address. 
 Set the HUE_BRIDGE_IP_ADDRESS variable to the Hue Bridge IP address in the .env file.
 
