@@ -50,21 +50,12 @@ def run_spotihue(lights: List[str]) -> None:
         if last_track_album_artwork_url:
             last_track_album_artwork_url = last_track_album_artwork_url.decode("utf-8")
 
-        (
-            track_name,
-            track_artist,
-            track_album,
-            track_album_artwork_url,
-        ) = spotihue.retrieve_current_track_information()
+        track_info = spotihue.retrieve_current_track_information()
+        track_album_artwork_url = track_info["track_album_artwork_url"]
 
         redis_client.hmset(
             "current_track_information",
-            {
-                "track_name": track_name,
-                "track_artist": track_artist,
-                "track_album": track_album,
-                "track_album_artwork_url": track_album_artwork_url,
-            },
+            track_info,
         )
 
         if last_track_album_artwork_url != track_album_artwork_url:

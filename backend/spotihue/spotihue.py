@@ -301,19 +301,19 @@ class SpotiHue:
             print("No current track 'is_playing' status available")
             return False
 
-    def retrieve_current_track_information(self) -> Tuple[str, str, str, str]:
+    def retrieve_current_track_information(self) -> dict:
         """Retrieves information about the current track.
 
         Returns:
-            tuple: The current track's name, artist, album, and album artwork URL.
+            dict: A dictionary containing the current track's name, artist, album, and album artwork URL.
             Returns default values if the current track information is not available.
         """
-        defaults = (
-            self._default_track_name,
-            self._default_track_artist,
-            self._default_track_album,
-            self._default_track_album_artwork_url,
-        )
+        defaults = {
+            "track_name": self._default_track_name,
+            "track_artist": self._default_track_artist,
+            "track_album": self._default_track_album,
+            "track_album_artwork_url": self._default_track_album_artwork_url,
+        }
 
         try:
             current_track = self._spotify.currently_playing()
@@ -326,15 +326,17 @@ class SpotiHue:
             return defaults
 
         track_data = current_track.get("item")
-        if track_data:
-            track_name = self._extract_track_name(track_data)
-            track_album = self._extract_album_name(track_data)
-            track_artist = self._extract_artist_name(track_data)
-            track_album_artwork_url = self._extract_album_artwork_url(track_data)
-            return track_name, track_artist, track_album, track_album_artwork_url
-        else:
+        if not track_data:
             print("No current track 'item' information is available")
             return defaults
+
+        track_info = {
+            "track_name": self._extract_track_name(track_data),
+            "track_artist": self._extract_album_name(track_data),
+            "track_album": self._extract_artist_name(track_data),
+            "track_album_artwork_url": self._extract_album_artwork_url(track_data),
+        }
+        return track_info
 
     def obtain_track_album_artwork_image_array(
         self, track_album_artwork_url: str
