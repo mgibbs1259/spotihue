@@ -31,8 +31,8 @@ spotihue = SpotiHue(
 )
 
 
-redis_client = redis.Redis(host="localhost", port=6379, db=0)
-celery_app = celery.Celery("spotihue", broker="redis://localhost:6379/0")
+redis_client = redis.Redis(host="host.docker.internal", port=6379, db=0)
+celery_app = celery.Celery("celery_app", broker="redis://host.docker.internal:6379/0")
 fast_app = FastAPI()
 
 

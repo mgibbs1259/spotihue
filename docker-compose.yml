@@ -3,14 +3,14 @@ version: '3'
 services:
   redis:
     image: redis:latest  
-
-  celery:
-    image: celery:latest 
-    command: celery -A spotihue.tasks worker --loglevel=info
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-    depends_on:
-      - redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./backend/data:/data
+    networks:
+      - default
+    restart: unless-stopped
       
   backend:
     container_name: spotihue-api
@@ -21,6 +21,25 @@ services:
       - ./backend/.env
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      - redis
+    networks:
+      - default
+    restart: unless-stopped
+    command: uvicorn main:fast_app --host 0.0.0.0 --port 8000
+
+  celery:
+    image: celery:latest 
+    container_name: celery
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    command: celery -A backend.main.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      - redis
     networks:
       - default
     restart: unless-stopped

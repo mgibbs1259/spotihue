@@ -1,3 +1,4 @@
+celery
 fastapi
 numpy
 opencv-python
