@@ -1,6 +1,17 @@
 version: '3'
 
 services:
+  redis:
+    image: redis:latest  
+
+  celery:
+    image: celery:latest 
+    command: celery -A spotihue.tasks worker --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      
   backend:
     container_name: spotihue-api
     build:
@@ -24,17 +35,6 @@ services:
   #   restart: unless-stopped
   #   depends_on:
   #     - backend
-
-  redis:
-    image: redis:latest  
-
-  celery:
-    image: celery:latest 
-    command: celery -A spotihue.tasks worker --loglevel=info
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-    depends_on:
-      - redis
 
 networks:
   default:

@@ -104,7 +104,7 @@ def store_selected_lights(lights: List[str]):
     return response
 
 
-@fast_app.put("/start-spotihue/")
+@fast_app.put("/start-spotihue")
 async def start_spotihue(lights: List[str]):
     try:
         spotihue_status = redis_client.get("spotihue")
@@ -131,7 +131,7 @@ async def start_spotihue(lights: List[str]):
     return response
 
 
-@fast_app.get("/current-track-information/")
+@fast_app.get("/current-track-information")
 async def retrieve_current_track_information():
     try:
         track_info = redis_client.hgetall("current_track_information")
@@ -148,7 +148,7 @@ async def retrieve_current_track_information():
     return response
 
 
-@fast_app.put("/stop-spotihue/")
+@fast_app.put("/stop-spotihue")
 async def stop_spotihue():
     try:
         spotihue_status = redis_client.get("spotihue")
