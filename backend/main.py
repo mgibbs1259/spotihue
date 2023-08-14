@@ -37,7 +37,7 @@ fast_app = FastAPI()
 
 
 @celery_app.task
-def run_spotihue():
+def run_spotihue(lights: List[str]) -> None:
     while spotihue.determine_current_track_status():
         last_track_info = redis_client.hgetall("current_track_information")
         last_track_album_artwork_url = last_track_info.get("track_album_artwork_url")
@@ -116,7 +116,7 @@ async def start_spotihue(lights: List[str]):
         else:
             spotihue.change_all_lights_to_normal_color(lights)
 
-            task = run_spotihue.delay()
+            task = run_spotihue.delay(lights)
             redis_client.set("spotihue", str(task.id))
 
             response = StandardResponse(success=True, message="spotihue started")
@@ -138,7 +138,7 @@ async def retrieve_current_track_information():
 
         response = StandardResponse(
             success=True,
-            message="Selected lights list stored in Redis",
+            message="Current track information retrieved successfully",
             data=track_info,
         )
 
@@ -149,7 +149,7 @@ async def retrieve_current_track_information():
 
 
 @fast_app.put("/stop-spotihue")
-async def stop_spotihue():
+async def stop_spotihue(lights: List[str]):
     try:
         spotihue_status = redis_client.get("spotihue")
 
