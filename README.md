@@ -5,17 +5,15 @@
 If you don't have Docker already installed, follow these [instructions](https://www.docker.com/products/docker-desktop/). Then, in the backend directory, create a copy of .example-env file and call it .env
 
 ## Hue Bridge
-To find the hue bridge IP address, open your Hue app and go to settings > My Hue System > Philips Hue > i > IP-address;
-Press button on top of bridge 
-Then run python main.py
-This only has to be done once
-If the app is not registered and the button is not pressed, press the button and call connect() (this only needs to be run a single time)
+To find the hue bridge IP address, open your Hue app and go to settings > My Hue System > Philips Hue > i > IP-address. 
+Set the HUE_BRIDGE_IP_ADDRESS variable to the hue bridge IP address in the .env file.
 
 ## Spotify API
 
 
 ## Fast API
 docker compose up 
+Press and hold button on top of hue bridge for about 3 seconds
 localhost:8000/docs
 
 # Develop
