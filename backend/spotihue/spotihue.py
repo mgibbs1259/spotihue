@@ -321,7 +321,7 @@ class SpotiHue:
             print(f"Error while fetching current track status: {e}")
             return defaults
 
-        if current_track is None:
+        if not current_track:
             print("No current track information is available")
             return defaults
 
