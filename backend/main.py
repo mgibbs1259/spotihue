@@ -177,8 +177,9 @@ async def stop_spotihue(lights: List[str] = None):
         spotihue_status = redis_client.get("spotihue")
         if spotihue_status:
             celery_app.control.revoke(spotihue_status, terminate=True)
-            spotihue.change_all_lights_to_normal_color(lights)
             redis_client.delete("spotihue")
+
+            spotihue.change_all_lights_to_normal_color(lights)
 
             response = StandardResponse(success=True, message="spotihue stopped")
         else:
