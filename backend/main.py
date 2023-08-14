@@ -46,6 +46,7 @@ def run_spotihue(lights: List[str]) -> None:
     while spotihue.determine_current_track_status():
         last_track_info = redis_client.hgetall("current_track_information")
         last_track_album_artwork_url = last_track_info.get(b"track_album_artwork_url")
+
         if last_track_album_artwork_url:
             last_track_album_artwork_url = last_track_album_artwork_url.decode("utf-8")
 
