@@ -2,7 +2,7 @@ import os
 import time
 import random
 import logging
-from typing import Any, List, Union
+from typing import Any, List
 
 import redis
 import celery
@@ -23,18 +23,17 @@ class StandardResponse(BaseModel):
 if os.path.exists(".env"):
     load_dotenv(".env")
 
+redis_client = redis.Redis(host="redis", port=6379, db=0)
 
 spotihue = SpotiHue(
-    os.environ.get("SPOTIFY_USERNAME"),
     os.environ.get("SPOTIFY_SCOPE"),
     os.environ.get("SPOTIFY_CLIENT_ID"),
     os.environ.get("SPOTIFY_CLIENT_SECRET"),
     os.environ.get("SPOTIFY_REDIRECT_URI"),
     os.environ.get("HUE_BRIDGE_IP_ADDRESS"),
+    redis_client
 )
 
-
-redis_client = redis.Redis(host="redis", port=6379, db=0)
 celery_app = celery.Celery("celery_app", broker="redis://redis:6379")
 fast_app = FastAPI()
 
@@ -64,6 +63,11 @@ def run_spotihue(lights: List[str]) -> None:
 
         sleep_duration = random.uniform(2, 4)
         time.sleep(sleep_duration)
+
+
+@fast_app.get("/hello")
+def hello():
+    return StandardResponse(success=True, message="hello world!")
 
 
 @fast_app.get("/available-lights")

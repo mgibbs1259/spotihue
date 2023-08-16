@@ -1,5 +1,3 @@
-import time
-import random
 import requests
 from typing import List, Optional, Tuple, Union
 
@@ -7,6 +5,7 @@ import cv2
 import phue
 import redis
 import spotipy
+from spotipy import cache_handler
 import numpy as np
 from sklearn.cluster import KMeans
 
@@ -14,32 +13,34 @@ from sklearn.cluster import KMeans
 class SpotiHue:
     def __init__(
         self,
-        spotify_username: str,
         spotify_scope: str,
         spotify_client_id: str,
         spotify_client_secret: str,
         spotify_redirect_uri: str,
         hue_bridge_ip_address: str,
+        redis_client: redis.Redis
     ):
         """Initialize a SpotiHue instance.
 
         Args:
-            spotify_username (str): Spotify username.
             spotify_scope (str): Spotify scope.
             spotify_client_id (str): Spotify client ID.
             spotify_client_secret (str): Spotify client secret.
             spotify_redirect_uri (str): Spotify redirect URI.
             hue_bridge_ip (str): IP address of the Hue bridge.
+            redis_client (redis.Redis object): Redis client for Spotify auth token caching.
         """
         self._spotify = self._initialize_spotify(
-            spotify_username,
             spotify_scope,
             spotify_client_id,
             spotify_client_secret,
             spotify_redirect_uri,
+            redis_client
         )
+        print('Spotify client initialized')
 
         self._hue = self._initialize_hue(hue_bridge_ip_address)
+        print('Hue client initialized')
 
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
@@ -48,34 +49,33 @@ class SpotiHue:
 
     def _initialize_spotify(
         self,
-        spotify_username: str,
         spotify_scope: str,
         spotify_client_id: str,
         spotify_client_secret: str,
         spotify_redirect_uri: str,
+        redis_client: redis.Redis
     ) -> spotipy.Spotify:
         """Initialize the Spotify object.
 
         Args:
-            username (str): Spotify username.
             scope (str): Spotify scope.
             client_id (str): Spotify client ID.
             client_secret (str): Spotify client secret.
             redirect_uri (str): Spotify redirect URI.
+            redis_client (redis.Redis object): Redis client for Spotify auth token caching.
 
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
-        spotify = spotipy.Spotify(
-            auth=spotipy.util.prompt_for_user_token(
-                spotify_username,
-                spotify_scope,
-                spotify_client_id,
-                spotify_client_secret,
-                spotify_redirect_uri,
-            )
+
+        spotify_auth = spotipy.SpotifyOAuth(
+            client_id=spotify_client_id,
+            client_secret=spotify_client_secret,
+            redirect_uri=spotify_redirect_uri,
+            scope=spotify_scope,
+            cache_handler=cache_handler.RedisCacheHandler(redis=redis_client, key='spotify_auth_token')
         )
-        return spotify
+        return spotipy.Spotify(auth_manager=spotify_auth)
 
     def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
         """Initialize the Hue Bridge object.
