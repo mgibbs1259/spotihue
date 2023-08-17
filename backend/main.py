@@ -25,7 +25,6 @@ if os.path.exists(".env"):
 
 
 spotihue = SpotiHue(
-    os.environ.get("SPOTIFY_USERNAME"),
     os.environ.get("SPOTIFY_SCOPE"),
     os.environ.get("SPOTIFY_CLIENT_ID"),
     os.environ.get("SPOTIFY_CLIENT_SECRET"),

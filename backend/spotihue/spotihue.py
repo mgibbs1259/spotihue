@@ -14,7 +14,6 @@ from sklearn.cluster import KMeans
 class SpotiHue:
     def __init__(
         self,
-        spotify_username: str,
         spotify_scope: str,
         spotify_client_id: str,
         spotify_client_secret: str,
@@ -24,7 +23,6 @@ class SpotiHue:
         """Initialize a SpotiHue instance.
 
         Args:
-            spotify_username (str): Spotify username.
             spotify_scope (str): Spotify scope.
             spotify_client_id (str): Spotify client ID.
             spotify_client_secret (str): Spotify client secret.
@@ -32,7 +30,6 @@ class SpotiHue:
             hue_bridge_ip (str): IP address of the Hue bridge.
         """
         self._spotify = self._initialize_spotify(
-            spotify_username,
             spotify_scope,
             spotify_client_id,
             spotify_client_secret,
@@ -48,7 +45,6 @@ class SpotiHue:
 
     def _initialize_spotify(
         self,
-        spotify_username: str,
         spotify_scope: str,
         spotify_client_id: str,
         spotify_client_secret: str,
@@ -57,7 +53,6 @@ class SpotiHue:
         """Initialize the Spotify object.
 
         Args:
-            username (str): Spotify username.
             scope (str): Spotify scope.
             client_id (str): Spotify client ID.
             client_secret (str): Spotify client secret.
@@ -66,16 +61,14 @@ class SpotiHue:
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
-        spotify = spotipy.Spotify(
-            auth=spotipy.util.prompt_for_user_token(
-                spotify_username,
-                spotify_scope,
-                spotify_client_id,
-                spotify_client_secret,
-                spotify_redirect_uri,
-            )
+        spotify_auth = spotipy.SpotifyOAuth(
+            client_id=spotify_client_id,
+            client_secret=spotify_client_secret,
+            redirect_uri=spotify_redirect_uri,
+            scope=spotify_scope,
         )
-        return spotify
+
+        return spotipy.Spotify(auth_manager=spotify_auth)
 
     def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
         """Initialize the Hue Bridge object.
@@ -464,9 +457,9 @@ class SpotiHue:
         for light in lights:
             if not current_lights[light].on:
                 current_lights[light].on = True
-            current_lights[light].hue = 10000
-            current_lights[light].brightness = 254
-            current_lights[light].saturation = 120
+                current_lights[light].hue = 10000
+                current_lights[light].brightness = 254
+                current_lights[light].saturation = 120
 
     def change_all_lights_constant(
         self, lights: List[str], light_color_values: List[Tuple[float, float]]
