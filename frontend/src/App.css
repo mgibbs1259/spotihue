@@ -1,8 +1,8 @@
-.App {
+.app {
   text-align: center;
 }
 
-.App-header {
+.app-container {
   background-color: #282c34;
   min-height: 100vh;
   display: flex;
@@ -11,4 +11,26 @@
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+}
+
+.app-title {
+  font-size: 2rem;
+  color: #ffffff;
+}
+
+.start-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  background-color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Add media query for mobile */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 30px;
+  }
 }
