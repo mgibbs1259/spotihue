@@ -1,17 +1,16 @@
-import os
-import time
-import random
 import logging
+import os
+import random
+import time
 from typing import Any, List
 
-import redis
 import celery
-import uvicorn
 from dotenv import load_dotenv
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import redis
 
-from spotihue.spotihue import SpotiHue
+from spotihue import constants, spotihue
 
 
 class StandardResponse(BaseModel):
@@ -25,7 +24,7 @@ if os.path.exists(".env"):
 
 redis_client = redis.Redis(host="redis", port=6379, db=0)
 
-spotihue = SpotiHue(
+spotihue = spotihue.SpotiHue(
     os.environ.get("SPOTIFY_SCOPE"),
     os.environ.get("SPOTIFY_CLIENT_ID"),
     os.environ.get("SPOTIFY_CLIENT_SECRET"),
@@ -42,8 +41,8 @@ fast_app = FastAPI()
 def run_spotihue(lights: List[str]) -> None:
     logging.info("Running spotihue")
 
-    while spotihue.determine_current_track_status():
-        last_track_info = redis_client.hgetall("current_track_information")
+    while spotihue.ascertain_track_playing():
+        last_track_info = redis_client.hgetall(constants.REDIS_TRACK_INFORMATION_KEY)
         last_track_album_artwork_url = last_track_info.get(b"track_album_artwork_url")
 
         if last_track_album_artwork_url:
@@ -52,9 +51,9 @@ def run_spotihue(lights: List[str]) -> None:
         track_info = spotihue.retrieve_current_track_information()
         track_album_artwork_url = track_info["track_album_artwork_url"]
 
-        redis_client.hmset(
-            "current_track_information",
-            track_info,
+        redis_client.hset(
+            constants.REDIS_TRACK_INFORMATION_KEY,
+            mapping=track_info
         )
 
         if last_track_album_artwork_url != track_album_artwork_url:
@@ -65,9 +64,17 @@ def run_spotihue(lights: List[str]) -> None:
         time.sleep(sleep_duration)
 
 
-@fast_app.get("/hello")
-def hello():
-    return StandardResponse(success=True, message="hello world!")
+@fast_app.get("/authorized")
+def user_authorized():
+    spotihue_auth_manager = spotihue.spotify.auth_manager
+
+    spotify_token = spotihue_auth_manager.validate_token(
+        spotihue_auth_manager.cache_handler.get_cached_token()
+    )
+    token_exists = bool(spotify_token is not None)
+
+    return StandardResponse(success=True, message='Authorized' if token_exists else 'Not Authorized',
+                            data={'authorized': token_exists})
 
 
 @fast_app.get("/available-lights")
@@ -93,10 +100,10 @@ async def retrieve_available_lights():
 @fast_app.post("/selected-lights")
 def store_selected_lights(lights: List[str]):
     if not lights:
-        raise HTTPException(status_code=400, detail="Selected lights list is required")
+        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
 
     try:
-        redis_client.set("lights", ",".join(lights))
+        redis_client.set(constants.REDIS_SELECTED_LIGHTS_KEY, ",".join(lights))
 
         response = StandardResponse(
             success=True, message="Selected lights list stored in Redis"
@@ -110,23 +117,10 @@ def store_selected_lights(lights: List[str]):
 
 @fast_app.put("/start-spotihue")
 async def start_spotihue(lights: List[str] = None):
+    if not lights:
+        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+
     try:
-        if not lights:
-            # stored_lights = redis_client.get("lights")
-            # if stored_lights:
-            #     lights = stored_lights.split(",")
-            # else:
-            raise ValueError("Empty list of lights")
-
-        spotihue_status = redis_client.get("spotihue")
-        print(spotihue_status)
-        # if spotihue_status:
-        #     response = StandardResponse(
-        #         success=True, message="spotihue is already running"
-        #     )
-        # else:
-        spotihue.change_all_lights_to_normal_color(lights)
-
         task = run_spotihue.delay(lights)
         redis_client.set("spotihue", str(task.id))
 
@@ -136,8 +130,8 @@ async def start_spotihue(lights: List[str] = None):
         raise HTTPException(status_code=500, detail=f"Redis Error: {redis_err}")
     except celery.exceptions.CeleryError as celery_err:
         raise HTTPException(status_code=500, detail=f"Celery Error: {celery_err}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+    except Exception:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
     return response
 
@@ -145,7 +139,7 @@ async def start_spotihue(lights: List[str] = None):
 @fast_app.get("/current-track-information")
 async def retrieve_current_track_information():
     try:
-        track_info = redis_client.hgetall("current_track_information")
+        track_info = redis_client.hgetall(constants.REDIS_TRACK_INFORMATION_KEY)
 
         response = StandardResponse(
             success=True,
@@ -160,21 +154,12 @@ async def retrieve_current_track_information():
 
 
 @fast_app.put("/stop-spotihue")
-async def stop_spotihue(lights: List[str] = None):
+async def stop_spotihue():
     try:
-        if not lights:
-            stored_lights = redis_client.get("lights")
-            if stored_lights:
-                lights = stored_lights.split(",")
-            else:
-                raise ValueError("Empty list of lights")
-
         spotihue_status = redis_client.get("spotihue")
         if spotihue_status:
             celery_app.control.revoke(spotihue_status, terminate=True)
             redis_client.delete("spotihue")
-
-            spotihue.change_all_lights_to_normal_color(lights)
 
             response = StandardResponse(success=True, message="spotihue stopped")
         else:
@@ -188,7 +173,3 @@ async def stop_spotihue(lights: List[str] = None):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
     return response
-
-
-if __name__ == "__main__":
-    uvicorn.run(fast_app, host="0.0.0.0", port=8000)

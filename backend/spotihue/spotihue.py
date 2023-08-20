@@ -1,13 +1,19 @@
+import logging
+
 import requests
 from typing import List, Optional, Tuple, Union
 
 import cv2
+import numpy as np
 import phue
 import redis
 import spotipy
 from spotipy import cache_handler
-import numpy as np
 from sklearn.cluster import KMeans
+
+from . import constants, oauth
+
+logger = logging.getLogger(__name__)
 
 
 class SpotiHue:
@@ -37,15 +43,20 @@ class SpotiHue:
             spotify_redirect_uri,
             redis_client
         )
-        print('Spotify client initialized')
-
         self._hue = self._initialize_hue(hue_bridge_ip_address)
-        print('Hue client initialized')
 
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
         self._default_track_album = "unavailable"
         self._default_track_album_artwork_url = ""
+
+    @property
+    def hue(self):
+        return self._hue
+
+    @property
+    def spotify(self):
+        return self._spotify
 
     def _initialize_spotify(
         self,
@@ -67,15 +78,18 @@ class SpotiHue:
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
-
-        spotify_auth = spotipy.SpotifyOAuth(
+        oauth_manager = oauth.SpotihueOauth(
             client_id=spotify_client_id,
             client_secret=spotify_client_secret,
             redirect_uri=spotify_redirect_uri,
             scope=spotify_scope,
-            cache_handler=cache_handler.RedisCacheHandler(redis=redis_client, key='spotify_auth_token')
+            open_browser=True,
+            cache_handler=cache_handler.RedisCacheHandler(
+                redis=redis_client,
+                key=constants.REDIS_SPOTIFY_ACCESS_TOKEN_KEY
+            )
         )
-        return spotipy.Spotify(auth_manager=spotify_auth)
+        return spotipy.Spotify(auth_manager=oauth_manager)
 
     def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
         """Initialize the Hue Bridge object.
@@ -86,9 +100,18 @@ class SpotiHue:
         Returns:
             phue.Bridge: Initialized Hue Bridge object.
         """
-        hue = phue.Bridge(hue_bridge_ip_address)
+        hue = phue.Bridge(hue_bridge_ip_address, config_file_path='.python_hue')
         hue.connect()
         return hue
+
+    def _get_current_track(self) -> Optional[dict]:
+        current_track = None
+        try:
+            current_track = self._spotify.currently_playing()
+        except spotipy.SpotifyException as e:
+            logger.error(f"Error while fetching current track status: {e}")
+        finally:
+            return current_track
 
     def _extract_track_name(self, track_data: dict) -> str:
         """Extracts the track name from track data.
@@ -278,27 +301,21 @@ class SpotiHue:
 
         return x, y
 
-    def determine_current_track_status(self) -> bool:
+    def ascertain_track_playing(self) -> bool:
         """Determines if Spotify is currently playing a track.
 
         Returns:
             bool: True if Spotify is playing a track, False otherwise.
         """
-        try:
-            current_track = self._spotify.currently_playing()
-        except spotipy.SpotifyException as e:
-            print(f"Error while fetching current track status: {e}")
-            return False
+        current_track = self._get_current_track()
 
         if current_track is None:
-            print("No current track information is available")
             return False
 
-        current_track_status = current_track.get("is_playing")
-        if current_track_status:
+        track_is_playing = current_track.get("is_playing")
+        if track_is_playing is True:
             return True
         else:
-            print("No current track 'is_playing' status available")
             return False
 
     def retrieve_current_track_information(self) -> dict:
@@ -314,20 +331,11 @@ class SpotiHue:
             "track_album": self._default_track_album,
             "track_album_artwork_url": self._default_track_album_artwork_url,
         }
+        current_track = self._get_current_track() or defaults
 
-        try:
-            current_track = self._spotify.currently_playing()
-        except spotipy.SpotifyException as e:
-            print(f"Error while fetching current track status: {e}")
-            return defaults
-
-        if not current_track:
-            print("No current track information is available")
-            return defaults
-
-        track_data = current_track.get("item")
+        track_data = current_track.get("item", {})
         if not track_data:
-            print("No current track 'item' information is available")
+            logger.info("No current track information is available")
             return defaults
 
         track_info = {
@@ -464,9 +472,9 @@ class SpotiHue:
         for light in lights:
             if not current_lights[light].on:
                 current_lights[light].on = True
-            current_lights[light].hue = 10000
-            current_lights[light].brightness = 254
-            current_lights[light].saturation = 120
+                current_lights[light].hue = 10000
+                current_lights[light].brightness = 254
+                current_lights[light].saturation = 120
 
     def change_all_lights_constant(
         self, lights: List[str], light_color_values: List[Tuple[float, float]]
