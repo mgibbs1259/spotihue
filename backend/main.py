@@ -105,14 +105,12 @@ def store_selected_lights(lights: List[str]):
     try:
         redis_client.set(constants.REDIS_SELECTED_LIGHTS_KEY, ",".join(lights))
 
-        response = StandardResponse(
+        return StandardResponse(
             success=True, message="Selected lights list stored in Redis"
         )
 
     except redis.exceptions.RedisError as redis_err:
         raise HTTPException(status_code=500, detail=f"Redis Error: {str(redis_err)}")
-
-    return response
 
 
 @fast_app.put("/start-spotihue")
@@ -121,10 +119,12 @@ async def start_spotihue(lights: List[str] = None):
         raise HTTPException(status_code=400, detail='\"lights\" list is required.')
 
     try:
+        # TODO: make this idempotent
+
         task = run_spotihue.delay(lights)
         redis_client.set("spotihue", str(task.id))
 
-        response = StandardResponse(success=True, message="spotihue started")
+        return StandardResponse(success=True, message="spotihue started")
 
     except redis.exceptions.RedisError as redis_err:
         raise HTTPException(status_code=500, detail=f"Redis Error: {redis_err}")
@@ -132,8 +132,6 @@ async def start_spotihue(lights: List[str] = None):
         raise HTTPException(status_code=500, detail=f"Celery Error: {celery_err}")
     except Exception:
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
-
-    return response
 
 
 @fast_app.get("/current-track-information")

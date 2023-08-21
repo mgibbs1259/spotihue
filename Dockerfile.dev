@@ -3,8 +3,15 @@ FROM python:3.10
 RUN mkdir /code
 WORKDIR /code
 
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
-
 COPY requirements.txt /code/
+
+RUN apt-get -y update --fix-missing 
+RUN apt-get -y install curl unzip wget
+
+RUN apt-get -y install ffmpeg libsm6 libxext6
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash -
+RUN apt-get install -y nodejs
+RUN npm install -g create-react-app

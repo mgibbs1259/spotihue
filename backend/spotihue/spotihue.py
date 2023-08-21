@@ -1,14 +1,12 @@
+import cv2
 import logging
-
-import requests
 from typing import List, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 import phue
 import redis
+import requests
 import spotipy
-from spotipy import cache_handler
 from sklearn.cluster import KMeans
 
 from . import constants, oauth
@@ -312,11 +310,8 @@ class SpotiHue:
         if current_track is None:
             return False
 
-        track_is_playing = current_track.get("is_playing")
-        if track_is_playing is True:
-            return True
-        else:
-            return False
+        track_is_playing = current_track.get("is_playing", False)
+        return track_is_playing
 
     def retrieve_current_track_information(self) -> dict:
         """Retrieves information about the current track.
@@ -447,7 +442,7 @@ class SpotiHue:
             X, Y, Z = self._convert_rgb_to_xyz(gamma_corrected_values)
             x, y = self._convert_xyz_to_xy(X, Y, Z)
 
-            light_color_values.append([x, y])
+            light_color_values.append((x, y))
 
         return light_color_values
 
