@@ -1,0 +1,15 @@
+FROM python:3.10
+
+ENV PYTHONUNBUFFERED=1
+
+RUN mkdir /backend
+WORKDIR /backend
+
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+
+RUN pip install --upgrade pip
+
+COPY requirements.txt /backend/
+RUN pip install -r requirements.txt
+
+EXPOSE 8000

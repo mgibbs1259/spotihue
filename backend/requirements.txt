@@ -3,9 +3,7 @@ fastapi
 numpy
 opencv-python
 phue
-pre-commit
 pydantic
-pytest
 python-dotenv
 redis
 scikit-learn

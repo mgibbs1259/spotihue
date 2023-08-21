@@ -1,0 +1,57 @@
+version: '3'
+
+x-api-common: &api-common
+  build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+  env_file:
+      - ./backend/.env
+  volumes:
+      - ./backend:/backend
+
+services:
+  redis:
+    image: redis:latest  
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./backend/data:/data
+    networks:
+      - default
+    restart: unless-stopped
+      
+  celery:
+    <<: *api-common
+    command: celery -A main worker --loglevel=info
+    depends_on:
+      - redis
+    networks:
+      - default
+    restart: unless-stopped
+
+  backend:
+    <<: *api-common
+    command: "uvicorn main:fast_app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - celery
+    networks:
+      - default
+    restart: unless-stopped
+
+  # frontend:
+  #   container_name: spotihue-ui
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.ui
+  #   networks:
+  #     - default
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - backend
+
+networks:
+  default:

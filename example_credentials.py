@@ -1,6 +1,0 @@
-hue_bridge_ip_address = "YOUR HUE BRIDGE IP ADDRESS"
-spotify_username = "YOUR SPOTIFY USERNAME"
-spotify_scope = "user-read-currently-playing"
-spotify_client_id = "YOUR SPOTIFY CLIENT ID"
-spotify_client_secret = "YOUR SPOTIFY CLIENT SECRET"
-spotify_redirect_uri = "http://localhost:8888/callback/"

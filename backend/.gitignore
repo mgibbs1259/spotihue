@@ -1,0 +1,5 @@
+# Misc
+.env
+.cache*
+*__pycache__
+*.rdb
