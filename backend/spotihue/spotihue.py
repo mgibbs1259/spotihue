@@ -7,6 +7,7 @@ import phue
 import redis
 import requests
 import spotipy
+from spotipy import cache_handler
 from sklearn.cluster import KMeans
 
 from . import constants, oauth
