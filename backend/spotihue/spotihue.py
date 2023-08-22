@@ -10,7 +10,7 @@ import spotipy
 from spotipy import cache_handler
 from sklearn.cluster import KMeans
 
-from . import constants, oauth
+from . import constants, hue, oauth
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +50,8 @@ class SpotiHue:
         self._default_track_album_artwork_url = ""
 
     @property
-    def hue(self):
-        return self._hue
-
-    @property
-    def spotify(self):
-        return self._spotify
+    def spotify_oauth(self):
+        return self._spotify.auth_manager
 
     def _initialize_spotify(
         self,
@@ -90,7 +86,7 @@ class SpotiHue:
         )
         return spotipy.Spotify(auth_manager=oauth_manager)
 
-    def _initialize_hue(self, hue_bridge_ip_address) -> phue.Bridge:
+    def _initialize_hue(self, hue_bridge_ip_address: str) -> hue.HueBridge:
         """Initialize the Hue Bridge object.
 
         Args:
@@ -99,9 +95,7 @@ class SpotiHue:
         Returns:
             phue.Bridge: Initialized Hue Bridge object.
         """
-        hue = phue.Bridge(hue_bridge_ip_address, config_file_path='.python_hue')
-        hue.connect()
-        return hue
+        return hue.HueBridge(hue_bridge_ip_address, config_file_path='.python_hue')
 
     def _get_current_track(self) -> Optional[dict]:
         current_track = None
@@ -311,8 +305,8 @@ class SpotiHue:
         if current_track is None:
             return False
 
-        track_is_playing = current_track.get("is_playing", False)
-        return track_is_playing
+        track_is_playing = current_track.get("is_playing")
+        return True if track_is_playing is True else False
 
     def retrieve_current_track_information(self) -> dict:
         """Retrieves information about the current track.
@@ -453,9 +447,9 @@ class SpotiHue:
         Returns:
             List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
         """
-        return [light.name for light in self._hue.lights]
+        return [light.name for light in self._hue.reachable_lights]
 
-    def change_all_lights_to_normal_color(self, lights: list) -> None:
+    def change_all_lights_to_normal_color(self, lights: list) -> None:  # TODO: currently unused
         """Change all specified lights to "normal" color.
 
         Args:
@@ -464,38 +458,14 @@ class SpotiHue:
         Returns:
             None
         """
-        current_lights = self._hue.get_light_objects("name")
-        for light in lights:
-            if not current_lights[light].on:
-                current_lights[light].on = True
-                current_lights[light].hue = 10000
-                current_lights[light].brightness = 254
-                current_lights[light].saturation = 120
+        self._hue.change_all_lights_to_white(lights)
 
-    def change_all_lights_constant(
-        self, lights: List[str], light_color_values: List[Tuple[float, float]]
-    ) -> None:
-        """Change all specified lights to the most prominent colors in the track's album artwork.
-
-        Args:
-            lights (List[str]): List of light names to be modified.
-            light_color_values (List[Tuple[float, float]]): List of xy values representing prominent colors.
-
-        Returns:
-            None
-        """
-        current_lights = self._hue.get_light_objects("name")
-        num_colors = len(light_color_values)
-        for i, light in enumerate(lights):
-            color = light_color_values[i % num_colors]
-            current_lights[light].xy = color
-
-    def sync_lights_music(self, track_album_artwork_url: str, lights: list) -> None:
+    def sync_lights_music(self, track_album_artwork_url: str, lights: List[str]) -> None:
         """Synchronize the track's album artwork and lights.
 
         Args:
             track_album_artwork_url (str): The track's album artwork URL.
-            lights (list): A list of lights to be synchronized.
+            lights (List[str]): A list of lights to be synchronized.
         """
         if (
             not track_album_artwork_url
@@ -517,4 +487,4 @@ class SpotiHue:
             kmeans_cluster_centers
         )
 
-        self.change_all_lights_constant(lights, light_color_values)
+        self._hue.change_light_colors(lights, light_color_values)

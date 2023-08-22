@@ -64,17 +64,17 @@ def run_spotihue(lights: List[str]) -> None:
         time.sleep(sleep_duration)
 
 
-@fast_app.get("/authorized")
-def user_authorized():
-    spotihue_auth_manager = spotihue.spotify.auth_manager
+@fast_app.get("/spotify-ready")
+def spotify_authorized():
+    spotify_auth_manager = spotihue.spotify_oauth
 
-    spotify_token = spotihue_auth_manager.validate_token(
-        spotihue_auth_manager.cache_handler.get_cached_token()
+    spotify_token = spotify_auth_manager.validate_token(
+        spotify_auth_manager.cache_handler.get_cached_token()
     )
     token_exists = bool(spotify_token is not None)
 
     return StandardResponse(success=True, message='Authorized' if token_exists else 'Not Authorized',
-                            data={'authorized': token_exists})
+                            data={'ready': token_exists})
 
 
 @fast_app.get("/available-lights")
@@ -117,6 +117,9 @@ def store_selected_lights(lights: List[str]):
 async def start_spotihue(lights: List[str] = None):
     if not lights:
         raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+
+    available_lights = spotihue.retrieve_available_lights()
+    lights = [light for light in lights if light in available_lights]
 
     try:
         # TODO: make this idempotent
