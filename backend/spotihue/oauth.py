@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from urllib import parse
 import webbrowser
 
@@ -23,7 +24,11 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
         super().__init__(**kwargs)
         self.auth_url = self.get_authorize_url(state=self.state)
 
-    def _open_auth_url(self):
+    def _open_auth_url(self) -> None:
+        """ Opens Spotify user auth url in a new browser tab, if possible.
+
+        Returns: None
+        """
         try:
             success = webbrowser.open_new_tab(self.auth_url)
             if success:
@@ -34,7 +39,15 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             logger.error(f'Failed to open auth URL in your browser (likely because you\'re running this '
                          f'in Docker) - please navigate here: {self.auth_url}')
 
-    def _get_auth_response_local_server(self, redirect_port):
+    def _get_auth_response_local_server(self, redirect_port: int) -> str:
+        """ Gets user auth response using a local server.
+
+        Args:
+            redirect_port (int): port for local redirect socket to listen on.
+
+        Returns:
+            str: auth code from Spotify.
+        """
         server = start_local_http_server(redirect_port)
         self._open_auth_url()
         server.handle_request()
@@ -49,7 +62,16 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
         else:
             raise oauth2.SpotifyOauthError("Server listening on localhost has not been accessed")
 
-    def get_auth_response(self, open_browser=None):
+    def get_auth_response(self, open_browser: Optional[bool] =None) -> str:
+        """ Gets user authorization from Spotify (ie, an auth code that can be exchanged with Spotify
+        for a refreshable access token).
+
+        Args:
+            open_browser (bool): Whether to try to open user's browser for them.
+
+        Returns:
+            str: auth code from Spotify.
+        """
         logger.info('User authentication with Spotify requires interaction with your web browser. '
                     'Once you enter your credentials and give authorization, you will be redirected to '
                     'a url.')

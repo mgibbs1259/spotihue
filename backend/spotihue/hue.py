@@ -18,6 +18,10 @@ class HueLight(phue.Light):
 
     @property
     def white_light(self) -> bool:
+        """
+        Returns:
+            bool: Whether hue light is a white (non-color) light.
+        """
         if self._white_light is None:
             try:
                 _ = self._get('colormode')
@@ -36,13 +40,19 @@ class HueBridge(phue.Bridge):
     light_class = HueLight
 
     @property
-    def reachable_lights(self):
+    def reachable_lights(self) -> List[HueLight]:
+        """ Retrieves bridge's reachable lights.
+
+        Returns:
+            List[HueLight]: list of HueLight objects.
+        """
         return [light for light in self.lights if light.reachable is True]
 
     def get_light_objects(self, mode='list'):
         """
         Only had to re-declare this because phue.Bridge class does not accommodate phue.Light class extension.
         Instantiates HueLight objects instead of phue.Light objects.
+        Otherwise the same as phue.Bridge.get_light_objects.
         """
         if self.lights_by_id == {}:
             lights = self.request('GET', '/api/' + self.username + '/lights/')

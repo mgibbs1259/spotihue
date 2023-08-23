@@ -3,7 +3,6 @@ import logging
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
-import phue
 import redis
 import requests
 import spotipy
@@ -23,7 +22,7 @@ class SpotiHue:
         spotify_client_secret: str,
         spotify_redirect_uri: str,
         hue_bridge_ip_address: str,
-        redis_client: redis.Redis
+        redis_client: Optional[redis.Redis] = None
     ):
         """Initialize a SpotiHue instance.
 
@@ -33,14 +32,15 @@ class SpotiHue:
             spotify_client_secret (str): Spotify client secret.
             spotify_redirect_uri (str): Spotify redirect URI.
             hue_bridge_ip (str): IP address of the Hue bridge.
-            redis_client (redis.Redis object): Redis client for Spotify auth token caching.
+            redis_client (redis.Redis object): Optional redis client for Spotify auth token caching. If not
+            supplied, Spotify auth token cache handler defaults to a file cache handler.
         """
         self._spotify = self._initialize_spotify(
             spotify_scope,
             spotify_client_id,
             spotify_client_secret,
             spotify_redirect_uri,
-            redis_client
+            redis_client=redis_client
         )
         self._hue = self._initialize_hue(hue_bridge_ip_address)
 
@@ -59,7 +59,7 @@ class SpotiHue:
         spotify_client_id: str,
         spotify_client_secret: str,
         spotify_redirect_uri: str,
-        redis_client: redis.Redis
+        redis_client: Optional[redis.Redis] = None
     ) -> spotipy.Spotify:
         """Initialize the Spotify object.
 
@@ -68,21 +68,24 @@ class SpotiHue:
             client_id (str): Spotify client ID.
             client_secret (str): Spotify client secret.
             redirect_uri (str): Spotify redirect URI.
-            redis_client (redis.Redis object): Redis client for Spotify auth token caching.
+            redis_client (redis.Redis object): Optional redis client for Spotify auth token caching. If not
+            supplied, Spotify auth token cache handler defaults to a file cache handler.
 
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
+        oauth_cache_handler = cache_handler.RedisCacheHandler(
+            redis=redis_client,
+            key=constants.REDIS_SPOTIFY_ACCESS_TOKEN_KEY
+        ) if redis_client else cache_handler.CacheFileHandler(cache_path='data/.spotify_token_cache')
+
         oauth_manager = oauth.SpotihueOauth(
             client_id=spotify_client_id,
             client_secret=spotify_client_secret,
             redirect_uri=spotify_redirect_uri,
             scope=spotify_scope,
             open_browser=True,
-            cache_handler=cache_handler.RedisCacheHandler(
-                redis=redis_client,
-                key=constants.REDIS_SPOTIFY_ACCESS_TOKEN_KEY
-            )
+            cache_handler=oauth_cache_handler
         )
         return spotipy.Spotify(auth_manager=oauth_manager)
 
@@ -93,11 +96,15 @@ class SpotiHue:
             bridge_ip (str): IP address of the Hue bridge.
 
         Returns:
-            phue.Bridge: Initialized Hue Bridge object.
+            hue.HueBridge: Initialized Hue Bridge object.
         """
         return hue.HueBridge(hue_bridge_ip_address, config_file_path='.python_hue')
 
     def _get_current_track(self) -> Optional[dict]:
+        """ Gets currently-playing track on Spotify (if there is one).
+
+        Returns: dictionary of track information if a Spotify track is playing, or None.
+        """
         current_track = None
         try:
             current_track = self._spotify.currently_playing()
