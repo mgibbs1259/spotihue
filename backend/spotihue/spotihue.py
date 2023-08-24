@@ -465,7 +465,6 @@ class SpotiHue:
             R, G, B = self._convert_xy_to_rgb(x, y)
             lights_rgb[light.name] = (R, G, B)
 
-        print(lights_rgb)
         return lights_rgb
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:
