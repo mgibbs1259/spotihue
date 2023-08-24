@@ -271,6 +271,22 @@ class SpotiHue:
 
         return x, y
 
+    def _convert_xy_to_rgb(self, x: float, y: float) -> Tuple[int, int, int]:
+        """Converts normalized xy values to RGB color values. The x and y
+        values are assumed to be within the range [0, 1], where x + y <= 1.
+
+        Args:
+            x (float): The normalized x value.
+            y (float): The normalized y value.
+
+        Returns:
+            Tuple[int, int, int]: RGB values after the xy to RGB conversion.
+        """
+        R = int(x * 255)
+        G = int(y * 255)
+        B = int((1 - x - y) * 255)
+        return R, G, B
+
     def determine_current_track_status(self) -> bool:
         """Determines if Spotify is currently playing a track.
 
@@ -436,13 +452,21 @@ class SpotiHue:
 
         return light_color_values
 
-    def retrieve_available_lights(self) -> List[str]:
-        """Retrieves the names of available lights.
+    def retrieve_available_lights_rgb(self) -> dict:
+        """Retrieves the names of available lights and their RGB values.
 
         Returns:
-            List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
+            dict: A dictionary of light names and their RGB values, or an
+            empty dictionary if no lights are available or an error occurs.
         """
-        return [light.name for light in self._hue.lights]
+        lights_rgb = {}
+        for light in self._hue.lights:
+            x, y = light.xy[0], light.xy[1]
+            R, G, B = self._convert_xy_to_rgb(x, y)
+            lights_rgb[light.name] = (R, G, B)
+
+        print(lights_rgb)
+        return lights_rgb
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.

@@ -14,6 +14,9 @@ from fastapi import FastAPI, HTTPException
 from spotihue.spotihue import SpotiHue
 
 
+logger = logging.getLogger(__name__)
+
+
 class StandardResponse(BaseModel):
     success: bool
     message: str
@@ -65,22 +68,25 @@ def run_spotihue(lights: List[str]) -> None:
         time.sleep(sleep_duration)
 
 
-@fast_app.get("/available-lights")
-async def retrieve_available_lights():
+@fast_app.get("/available-lights-rgb")
+async def retrieve_available_lights_rgb():
     try:
-        available_lights = spotihue.retrieve_available_lights()
+        available_lights_rgb = spotihue.retrieve_available_lights_rgb()
 
-        if available_lights:
+        if available_lights_rgb:
             response = StandardResponse(
                 success=True,
                 message="Available lights retrieved successfully",
-                data={"lights": available_lights},
+                data=available_lights_rgb,
             )
         else:
-            response = StandardResponse(success=False, message="No available lights")
+            response = StandardResponse(
+                success=True, message="No available lights", data=available_lights_rgb
+            )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+        logger.error(f"Error retrieving available lights: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return response
 
