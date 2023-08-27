@@ -3,6 +3,7 @@ import logging
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
+import phue
 import redis
 import requests
 import spotipy
@@ -42,7 +43,16 @@ class SpotiHue:
             spotify_redirect_uri,
             redis_client=redis_client
         )
-        self._hue = self._initialize_hue(hue_bridge_ip_address)
+
+        # Because HueBridge initialization relies upon the user having pressed their bridge's link button
+        # within the last 30 seconds, it is allowed to fail. The initialization is retried by accessing
+        # the SpotiHue object's hue_bridge property.
+        self._hue_bridge_ip_address = hue_bridge_ip_address
+        self._hue = None
+        try:
+            self._hue = self._initialize_hue(self._hue_bridge_ip_address)
+        except phue.PhueRegistrationException:
+            logger.info('Unable to connect to Hue bridge; link button has not been pushed')
 
         self._default_track_name = "unavailable"
         self._default_track_artist = "unavailable"
@@ -50,17 +60,18 @@ class SpotiHue:
         self._default_track_album_artwork_url = ""
 
     @property
-    def spotify_oauth(self):
+    def hue_bridge(self) -> hue.HueBridge:
+        if not self._hue:
+            self._hue = self._initialize_hue(self._hue_bridge_ip_address)
+        return self._hue
+
+    @property
+    def spotify_oauth(self) -> oauth.SpotihueOauth:
         return self._spotify.auth_manager
 
-    def _initialize_spotify(
-        self,
-        spotify_scope: str,
-        spotify_client_id: str,
-        spotify_client_secret: str,
-        spotify_redirect_uri: str,
-        redis_client: Optional[redis.Redis] = None
-    ) -> spotipy.Spotify:
+    @staticmethod
+    def _initialize_spotify(scope: str, client_id: str, client_secret: str, redirect_uri: str,
+                            redis_client: Optional[redis.Redis] = None) -> spotipy.Spotify:
         """Initialize the Spotify object.
 
         Args:
@@ -80,25 +91,59 @@ class SpotiHue:
         ) if redis_client else cache_handler.CacheFileHandler(cache_path='data/.spotify_token_cache')
 
         oauth_manager = oauth.SpotihueOauth(
-            client_id=spotify_client_id,
-            client_secret=spotify_client_secret,
-            redirect_uri=spotify_redirect_uri,
-            scope=spotify_scope,
-            open_browser=True,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            scope=scope,
+            open_browser=False,
             cache_handler=oauth_cache_handler
         )
         return spotipy.Spotify(auth_manager=oauth_manager)
 
-    def _initialize_hue(self, hue_bridge_ip_address: str) -> hue.HueBridge:
+    @staticmethod
+    def _initialize_hue(hue_bridge_ip_address: str) -> hue.HueBridge:
         """Initialize the Hue Bridge object.
 
         Args:
-            bridge_ip (str): IP address of the Hue bridge.
+            hue_bridge_ip_address (str): IP address of the Hue bridge.
 
         Returns:
             hue.HueBridge: Initialized Hue Bridge object.
         """
         return hue.HueBridge(hue_bridge_ip_address, config_file_path='.python_hue')
+
+    def spotify_ready(self) -> bool:
+        """ Checks whether a Spotify access token has been obtained. If access token is expired, refreshes it
+        and returns True.
+
+        Returns:
+             bool: Whether an access token exists in Spotify's auth manager's cache.
+        """
+        spotify_token = self.spotify_oauth.validate_token(
+            self.spotify_oauth.cache_handler.get_cached_token()
+        )
+        token_exists = bool(spotify_token is not None)
+        return token_exists
+
+    def hue_ready(self, raise_exception: bool = False) -> bool:
+        """ Checks whether connection to Hue bridge can be made.
+        If hue bridge is already initialized, connect to it.
+
+        Args:
+            raise_exception (bool): Whether to re-raise exceptions caught in this method.
+
+        Returns:
+             bool: Whether Hue bridge connection is instantiated and current.
+        """
+        try:
+            self.hue_bridge.connect()
+            return True
+        except Exception as e:
+            logger.error(f'Hue bridge connection failed: {e}')
+            if raise_exception:
+                raise
+            else:
+                return False
 
     def _get_current_track(self) -> Optional[dict]:
         """ Gets currently-playing track on Spotify (if there is one).
@@ -454,9 +499,9 @@ class SpotiHue:
         Returns:
             List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
         """
-        return [light.name for light in self._hue.reachable_lights]
+        return [light.name for light in self.hue_bridge.reachable_lights]
 
-    def change_all_lights_to_normal_color(self, lights: list) -> None:  # TODO: currently unused
+    def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.
 
         Args:
@@ -465,7 +510,7 @@ class SpotiHue:
         Returns:
             None
         """
-        self._hue.change_all_lights_to_white(lights)
+        self.hue_bridge.change_all_lights_to_white(lights)
 
     def sync_lights_music(self, track_album_artwork_url: str, lights: List[str]) -> None:
         """Synchronize the track's album artwork and lights.
@@ -494,4 +539,4 @@ class SpotiHue:
             kmeans_cluster_centers
         )
 
-        self._hue.change_light_colors(lights, light_color_values)
+        self.hue_bridge.change_light_colors(lights, light_color_values)

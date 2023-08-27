@@ -1,16 +1,12 @@
 import logging
-import os
-import random
-import time
 from typing import Any, List
 
-import celery
-from dotenv import load_dotenv
+from celery import exceptions as celery_exceptions
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import redis
 
-from spotihue import constants, spotihue
+from spotihue import celery_app, constants, redis_client, spotihue, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -21,62 +17,46 @@ class StandardResponse(BaseModel):
     data: Any = None
 
 
-if os.path.exists(".env"):
-    load_dotenv(".env")
-
-redis_client = redis.Redis(host="redis", port=6379, db=0)
-
-spotihue = spotihue.SpotiHue(
-    os.environ.get("SPOTIFY_SCOPE"),
-    os.environ.get("SPOTIFY_CLIENT_ID"),
-    os.environ.get("SPOTIFY_CLIENT_SECRET"),
-    os.environ.get("SPOTIFY_REDIRECT_URI"),
-    os.environ.get("HUE_BRIDGE_IP_ADDRESS"),
-    redis_client
-)
-
-celery_app = celery.Celery("celery_app", broker="redis://redis:6379")
 fast_app = FastAPI()
 
 
-@celery_app.task
-def run_spotihue(lights: List[str]) -> None:
-    logger.info("Running spotihue")
+@fast_app.get("/hue-ready")
+def hue_setup_complete():
+    hue_set_up = spotihue.hue_ready()
+    return StandardResponse(success=True, message='Hue setup complete' if hue_set_up else 'Hue setup not complete',
+                            data={'ready': hue_set_up})
 
-    while spotihue.ascertain_track_playing():
-        last_track_info = redis_client.hgetall(constants.REDIS_TRACK_INFORMATION_KEY)
-        last_track_album_artwork_url = last_track_info.get(b"track_album_artwork_url")
 
-        if last_track_album_artwork_url:
-            last_track_album_artwork_url = last_track_album_artwork_url.decode("utf-8")
+@fast_app.post("/setup-hue")
+def setup_hue():
+    try:
+        tasks.setup_hue.delay(retries=3)
+    except Exception as e:
+        logger.error(f'Error invoking Hue setup task: {e}')
+        return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
 
-        track_info = spotihue.retrieve_current_track_information()
-        track_album_artwork_url = track_info["track_album_artwork_url"]
-
-        redis_client.hset(
-            constants.REDIS_TRACK_INFORMATION_KEY,
-            mapping=track_info
-        )
-
-        if last_track_album_artwork_url != track_album_artwork_url:
-            logger.info("Syncing lights")
-            spotihue.sync_lights_music(track_album_artwork_url, lights)
-
-        sleep_duration = random.uniform(2, 4)
-        time.sleep(sleep_duration)
+    return StandardResponse(success=True, message='Hue setup task running', data={"setup_running": True})
 
 
 @fast_app.get("/spotify-ready")
-def spotify_authorized():
-    spotify_auth_manager = spotihue.spotify_oauth
+def spotify_authorization_complete():
+    spotify_authorized = spotihue.spotify_ready()
+    return StandardResponse(success=True, message='Authorized' if spotify_authorized else 'Not Authorized',
+                            data={'ready': spotify_authorized})
 
-    spotify_token = spotify_auth_manager.validate_token(
-        spotify_auth_manager.cache_handler.get_cached_token()
-    )
-    token_exists = bool(spotify_token is not None)
 
-    return StandardResponse(success=True, message='Authorized' if token_exists else 'Not Authorized',
-                            data={'ready': token_exists})
+@fast_app.get("/authorize-spotify")
+def authorize_spotify():
+    spotify_user_auth_url = spotihue.spotify_oauth.auth_url
+
+    try:
+        tasks.listen_for_spotify_redirect.delay()
+    except celery_exceptions.CeleryError as celery_err:
+        logger.error(f'Error invoking Spotify authorization task: {celery_err}')
+        return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
+
+    return StandardResponse(success=True, message='Paste this into a browser tab',
+                            data={'auth_url': spotify_user_auth_url})
 
 
 @fast_app.get("/available-lights")
@@ -129,7 +109,7 @@ async def start_spotihue(lights: List[str] = None):
     try:
         # TODO: make this idempotent
 
-        task = run_spotihue.delay(lights)
+        task = tasks.run_spotihue.delay(lights)
         redis_client.set("spotihue", str(task.id))
 
         return StandardResponse(success=True, message="spotihue started")
@@ -137,7 +117,7 @@ async def start_spotihue(lights: List[str] = None):
     except redis.exceptions.RedisError as redis_err:
         logger.error(f'Redis error starting spotihue: {redis_err}')
         raise HTTPException(status_code=500, detail=f"Redis Error")
-    except celery.exceptions.CeleryError as celery_err:
+    except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
@@ -178,7 +158,7 @@ async def stop_spotihue():
     except redis.exceptions.RedisError as redis_err:
         logger.error(f'Redis error stopping spotihue: {redis_err}')
         raise HTTPException(status_code=500, detail=f"Redis Error")
-    except celery.exceptions.CeleryError as celery_err:
+    except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
