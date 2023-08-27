@@ -501,7 +501,7 @@ class SpotiHue:
         """
         return [light.name for light in self.hue_bridge.reachable_lights]
 
-    def change_all_lights_to_normal_color(self, lights: list) -> None:
+    def change_all_lights_to_normal_color(self, lights: list) -> None:  # TODO: currently unused
         """Change all specified lights to "normal" color.
 
         Args:
