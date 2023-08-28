@@ -25,6 +25,7 @@ class StandardResponse(BaseModel):
 if os.path.exists(".env"):
     load_dotenv(".env")
 
+
 redis_client = redis.Redis(host="redis", port=6379, db=0)
 
 spotihue = spotihue.SpotiHue(
