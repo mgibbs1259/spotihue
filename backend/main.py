@@ -46,6 +46,9 @@ fast_app = FastAPI()
 def run_spotihue(lights: List[str]) -> None:
     logger.info("Running spotihue")
 
+    # This is a placeholder for PR #8
+    spoithue._hue.change_all_lights_to_white(lights)
+
     while spotihue.ascertain_track_playing():
         last_track_info = redis_client.hgetall(constants.REDIS_TRACK_INFORMATION_KEY)
         last_track_album_artwork_url = last_track_info.get(b"track_album_artwork_url")

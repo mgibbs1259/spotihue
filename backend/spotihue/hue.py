@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import phue
 
@@ -74,11 +74,27 @@ class HueBridge(phue.Bridge):
         """
         return [light for light in self.lights if light.reachable is True]
 
-    def get_light_objects(self, mode="list"):
-        """
-        Only had to re-declare this because phue.Bridge class does not accommodate phue.Light class extension.
-        Instantiates HueLight objects instead of phue.Light objects.
-        Otherwise the same as phue.Bridge.get_light_objects.
+    def get_light_objects(
+        self, mode: str = "list"
+    ) -> Union[List[HueLight], Dict[str, HueLight]]:
+        """Retrieves light objects associated with the Hue bridge.
+        Only had to re-declare this because phue.Bridge class does
+        not accommodate phue.Light class extension. Instantiates HueLight
+        objects instead of phue.Light objects. Otherwise, the same as
+        phue.Bridge.get_light_objects.
+
+        Args:
+            mode (str, optional):
+                The mode for returning light objects. Possible values are:
+                - "id": Return a dictionary of light objects indexed by ID.
+                - "name": Return a dictionary of light objects indexed by name.
+                - "list" (default): Return a list of light objects sorted by ID.
+
+        Returns:
+            list or dict:
+                If mode is "id", returns a dictionary of light objects indexed by ID.
+                If mode is "name", returns a dictionary of light objects indexed by name.
+                If mode is "list" (default), returns a list of light objects sorted by ID.
         """
         if self.lights_by_id == {}:
             lights = self.request("GET", "/api/" + self.username + "/lights/")
@@ -87,12 +103,13 @@ class HueBridge(phue.Bridge):
                 self.lights_by_name[lights[light]["name"]] = self.lights_by_id[
                     int(light)
                 ]
+
         if mode == "id":
             return self.lights_by_id
         if mode == "name":
             return self.lights_by_name
         if mode == "list":
-            # return lights in sorted id order, dicts have no natural order
+            # Return lights in sorted ID order, dicts have no natural order
             return [self.lights_by_id[id] for id in sorted(self.lights_by_id)]
 
     def change_all_lights_to_white(self, lights: List[str]) -> None:
