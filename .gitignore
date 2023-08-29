@@ -2,4 +2,4 @@
 .cache*
 *__pycache__
 *.rdb
-.python_hue
+*.hue_config
