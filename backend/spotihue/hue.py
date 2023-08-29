@@ -104,8 +104,9 @@ class HueBridge(phue.Bridge):
 
             if not current_light.on:
                 current_light.on = True
-                current_light.brightness = 254
 
-                if not current_light.white_light:
-                    current_light.hue = 10000
-                    current_light.saturation = 120
+            current_light.brightness = 254
+
+            if not current_light.white_light:
+                current_light.hue = 10000
+                current_light.saturation = 120
