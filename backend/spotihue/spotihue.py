@@ -452,32 +452,17 @@ class SpotiHue:
 
         return light_color_values
 
-    def retrieve_available_lights_rgb(self) -> dict:
+    def retrieve_available_lights(self) -> List[dict]:
         """Retrieves the names of available lights and their RGB values.
 
         Returns:
-            dict: A dictionary of light names and their RGB values, or an
-            empty dictionary if no lights are available or an error occurs.
+            List[dict]: A list of dictionaries containing light names and their RGB values.
+            An empty list is returned if no lights are available or an error occurs.
         """
-        lights_rgb = []
+        lights = []
         for light in self._hue.reachable_lights:
-            x, y = light.xy[0], light.xy[1]
-            R, G, B = self._hue.convert_xy_to_rgb(x, y)
-            lights_rgb.append({"light_name": light.name, "light_rgb": (R, G, B)})
-        return lights_rgb
-
-    def change_all_lights_to_normal_color(
-        self, lights: list
-    ) -> None:  # TODO: currently unused
-        """Change all specified lights to "normal" color.
-
-        Args:
-            lights (List[str]): List of light names to be modified.
-
-        Returns:
-            None
-        """
-        self._hue.change_all_lights_to_white(lights)
+            lights.append({"light_name": light.name, "light_rgb": light.rgb})
+        return lights
 
     def sync_lights_music(
         self, track_album_artwork_url: str, lights: List[str]
@@ -508,4 +493,4 @@ class SpotiHue:
             kmeans_cluster_centers
         )
 
-        self._hue.change_light_colors(lights, light_color_values)
+        self._hue.change_lights_colors(lights, light_color_values)

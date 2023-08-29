@@ -1,7 +1,7 @@
 import logging
 import webbrowser
-from typing import Optional
 from urllib import parse
+from typing import Optional
 
 from spotipy import oauth2, util
 

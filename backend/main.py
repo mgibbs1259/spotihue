@@ -82,20 +82,20 @@ def spotify_authorized():
     )
 
 
-@fast_app.get("/available-lights-rgb")
-async def retrieve_available_lights_rgb():
+@fast_app.get("/available-lights")
+async def retrieve_available_lights():
     try:
-        available_lights_rgb = spotihue.retrieve_available_lights_rgb()
+        available_lights = spotihue.retrieve_available_lights()
 
-        if available_lights_rgb:
+        if available_lights:
             response = StandardResponse(
                 success=True,
                 message="Available lights retrieved successfully",
-                data=available_lights_rgb,
+                data=available_lights,
             )
         else:
             response = StandardResponse(
-                success=True, message="No available lights", data=available_lights_rgb
+                success=True, message="No available lights", data=available_lights
             )
 
     except Exception as e:
