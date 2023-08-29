@@ -20,11 +20,28 @@ class StandardResponse(BaseModel):
 fast_app = FastAPI()
 
 
-@fast_app.get("/hue-ready")
+@fast_app.get("/ready")
 def hue_setup_complete():
     hue_set_up = spotihue.hue_ready()
-    return StandardResponse(success=True, message='Hue setup complete' if hue_set_up else 'Hue setup not complete',
-                            data={'ready': hue_set_up})
+    spotify_authorized = spotihue.spotify_ready()
+    success = bool(hue_set_up and spotify_authorized)
+
+    data = {
+        'hue_ready': hue_set_up,
+        'spotify_ready': spotify_authorized
+    }
+    message = ''
+
+    if success:
+        message = 'Setup complete'
+    elif hue_set_up and not spotify_authorized:
+        message = 'Spotify setup incomplete'
+    elif spotify_authorized and not hue_set_up:
+        message = 'Hue setup incomplete'
+    else:
+        message = 'Setup incomplete'
+
+    return StandardResponse(success=success, message=message, data=data)
 
 
 @fast_app.post("/setup-hue")
@@ -36,13 +53,6 @@ def setup_hue():
         return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
 
     return StandardResponse(success=True, message='Hue setup task running', data={"setup_running": True})
-
-
-@fast_app.get("/spotify-ready")
-def spotify_authorization_complete():
-    spotify_authorized = spotihue.spotify_ready()
-    return StandardResponse(success=True, message='Authorized' if spotify_authorized else 'Not Authorized',
-                            data={'ready': spotify_authorized})
 
 
 @fast_app.get("/authorize-spotify")
