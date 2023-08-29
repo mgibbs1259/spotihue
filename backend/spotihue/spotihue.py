@@ -102,7 +102,7 @@ class SpotiHue:
         Returns:
             hue.HueBridge: Initialized Hue Bridge object.
         """
-        return hue.HueBridge(hue_bridge_ip_address, config_file_path=".python_hue")
+        return hue.HueBridge(hue_bridge_ip_address, config_file_path=".hue_config")
 
     def _get_current_track(self) -> Optional[dict]:
         """Gets currently-playing track on Spotify (if there is one).
