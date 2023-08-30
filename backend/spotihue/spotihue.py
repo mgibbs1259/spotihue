@@ -509,7 +509,7 @@ class SpotiHue:
             lights.append({"light_name": light.name, "light_rgb": light.rgb})
         return lights
 
-    def change_all_lights_to_normal_color(self, lights: list) -> None:  # TODO: currently unused
+    def change_all_lights_to_normal_color(self, lights: list) -> None:
         """Change all specified lights to "normal" color.
 
         Args:
