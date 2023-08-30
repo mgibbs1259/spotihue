@@ -56,7 +56,7 @@ class SpotifyOauth(oauth2.SpotifyOAuth):
             self._open_auth_url()
 
         server.handle_request()
-        logger.info(f'Callback received!')
+        logger.info('Callback received!')
 
         if self.state is not None and server.state != self.state:
             raise oauth2.SpotifyStateError(self.state, server.state)

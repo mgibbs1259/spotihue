@@ -66,9 +66,9 @@ def listen_for_spotify_redirect() -> None:
 
     try:
         auth_code = spotify_oauth.get_auth_response()
-        logger.info(f'Received user authorization from Spotify')
+        logger.info('Received user authorization from Spotify')
         spotify_oauth.get_access_token(code=auth_code, check_cache=False)
-        logger.info(f'Cached access token from Spotify')
+        logger.info('Cached access token from Spotify')
     except SpotifyOauthError as e:
         logger.error(str(e))
         raise
