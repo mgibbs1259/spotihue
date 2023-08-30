@@ -67,7 +67,7 @@ class SpotiHue:
         return self._hue
 
     @property
-    def spotify_oauth(self) -> oauth.SpotihueOauth:
+    def spotify_oauth(self) -> oauth.SpotifyOauth:
         return self._spotify.auth_manager
 
     @staticmethod
@@ -94,7 +94,7 @@ class SpotiHue:
             else cache_handler.CacheFileHandler(cache_path="data/.spotify_token_cache")
         )
 
-        oauth_manager = oauth.SpotihueOauth(
+        oauth_manager = oauth.SpotifyOauth(
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=redirect_uri,

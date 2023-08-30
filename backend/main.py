@@ -21,7 +21,7 @@ fast_app = FastAPI()
 
 
 @fast_app.get("/ready")
-def hue_setup_complete():
+def spotihue_ready():
     hue_set_up = spotihue.hue_ready()
     spotify_authorized = spotihue.spotify_ready()
     success = bool(hue_set_up and spotify_authorized)

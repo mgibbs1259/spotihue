@@ -18,7 +18,7 @@ def start_local_http_server(port, handler=oauth2.RequestHandler):
     return server
 
 
-class SpotihueOauth(oauth2.SpotifyOAuth):
+class SpotifyOauth(oauth2.SpotifyOAuth):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.auth_url = self.get_authorize_url(state=self.state)
