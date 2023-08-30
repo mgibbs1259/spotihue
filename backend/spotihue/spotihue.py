@@ -12,6 +12,7 @@ from sklearn.cluster import KMeans
 
 from . import constants, hue, oauth
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +24,7 @@ class SpotiHue:
         spotify_client_secret: str,
         spotify_redirect_uri: str,
         hue_bridge_ip_address: str,
-        redis_client: Optional[redis.Redis] = None
+        redis_client: Optional[redis.Redis] = None,
     ):
         """Initialize a SpotiHue instance.
 
@@ -41,7 +42,7 @@ class SpotiHue:
             spotify_client_id,
             spotify_client_secret,
             spotify_redirect_uri,
-            redis_client=redis_client
+            redis_client=redis_client,
         )
 
         # Because HueBridge initialization relies upon the user having pressed their bridge's link button
@@ -85,10 +86,13 @@ class SpotiHue:
         Returns:
             spotipy.Spotify: Initialized Spotify object.
         """
-        oauth_cache_handler = cache_handler.RedisCacheHandler(
-            redis=redis_client,
-            key=constants.REDIS_SPOTIFY_ACCESS_TOKEN_KEY
-        ) if redis_client else cache_handler.CacheFileHandler(cache_path='data/.spotify_token_cache')
+        oauth_cache_handler = (
+            cache_handler.RedisCacheHandler(
+                redis=redis_client, key=constants.REDIS_SPOTIFY_ACCESS_TOKEN_KEY
+            )
+            if redis_client
+            else cache_handler.CacheFileHandler(cache_path="data/.spotify_token_cache")
+        )
 
         oauth_manager = oauth.SpotihueOauth(
             client_id=client_id,
@@ -110,7 +114,7 @@ class SpotiHue:
         Returns:
             hue.HueBridge: Initialized Hue Bridge object.
         """
-        return hue.HueBridge(hue_bridge_ip_address, config_file_path='.python_hue')
+        return hue.HueBridge(hue_bridge_ip_address, config_file_path=".hue_config")
 
     def spotify_ready(self) -> bool:
         """ Checks whether a Spotify access token has been obtained. If access token is expired, refreshes it
@@ -146,7 +150,7 @@ class SpotiHue:
                 return False
 
     def _get_current_track(self) -> Optional[dict]:
-        """ Gets currently-playing track on Spotify (if there is one).
+        """Gets currently-playing track on Spotify (if there is one).
 
         Returns: dictionary of track information if a Spotify track is playing, or None.
         """
@@ -493,13 +497,17 @@ class SpotiHue:
 
         return light_color_values
 
-    def retrieve_available_lights(self) -> List[str]:
-        """Retrieves the names of available lights.
+    def retrieve_available_lights(self) -> List[dict]:
+        """Retrieves the names of available lights and their RGB values.
 
         Returns:
-            List[str]: A list of light names, or an empty list if no lights are available or an error occurs.
+            List[dict]: A list of dictionaries containing light names and their RGB values.
+            An empty list is returned if no lights are available or an error occurs.
         """
-        return [light.name for light in self.hue_bridge.reachable_lights]
+        lights = []
+        for light in self.hue_bridge.reachable_lights:
+            lights.append({"light_name": light.name, "light_rgb": light.rgb})
+        return lights
 
     def change_all_lights_to_normal_color(self, lights: list) -> None:  # TODO: currently unused
         """Change all specified lights to "normal" color.

@@ -73,20 +73,21 @@ def authorize_spotify():
 async def retrieve_available_lights():
     try:
         available_lights = spotihue.retrieve_available_lights()
-        data = {"lights": available_lights}
 
         if available_lights:
             response = StandardResponse(
                 success=True,
                 message="Available lights retrieved successfully",
-                data=data,
+                data=available_lights,
             )
         else:
-            response = StandardResponse(success=True, message="No available lights", data=data)
+            response = StandardResponse(
+                success=True, message="No available lights", data=available_lights
+            )
 
     except Exception as e:
-        logger.error(f'Error retrieving available lights: {e}')
-        raise HTTPException(status_code=500, detail=f"Internal Server Error")
+        logger.error(f"Error retrieving available lights: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return response
 
@@ -94,7 +95,7 @@ async def retrieve_available_lights():
 @fast_app.post("/selected-lights")
 def store_selected_lights(lights: List[str]):
     if not lights:
-        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+        raise HTTPException(status_code=400, detail='"lights" list is required.')
 
     try:
         redis_client.set(constants.REDIS_SELECTED_LIGHTS_KEY, ",".join(lights))
@@ -104,14 +105,14 @@ def store_selected_lights(lights: List[str]):
         )
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error storing selected lights: {redis_err}')
+        logger.error(f"Redis error storing selected lights: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
 
 
 @fast_app.put("/start-spotihue")
 async def start_spotihue(lights: List[str] = None):
     if not lights:
-        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+        raise HTTPException(status_code=400, detail='"lights" list is required.')
 
     available_lights = spotihue.retrieve_available_lights()
     lights = [light for light in lights if light in available_lights]
@@ -125,13 +126,13 @@ async def start_spotihue(lights: List[str] = None):
         return StandardResponse(success=True, message="spotihue started")
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error starting spotihue: {redis_err}')
+        logger.error(f"Redis error starting spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
-        logger.error(f'Error starting spotihue: {e}')
+        logger.error(f"Error starting spotihue: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
 
@@ -147,7 +148,7 @@ async def retrieve_current_track_information():
         )
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error getting current Spotify track: {str(redis_err)}')
+        logger.error(f"Redis error getting current Spotify track: {str(redis_err)}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
 
     return response
@@ -166,13 +167,13 @@ async def stop_spotihue():
             response = StandardResponse(success=True, message="spotihue is not running")
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error stopping spotihue: {redis_err}')
+        logger.error(f"Redis error stopping spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
-        logger.error(f'Error starting spotihue: {e}')
+        logger.error(f"Error starting spotihue: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
     return response
