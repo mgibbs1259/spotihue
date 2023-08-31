@@ -1,0 +1,15 @@
+.green-border-button {
+    border: 3px solid #00ff47;
+    border-radius: 20px;
+    background-color: transparent;
+    font-family: 'Rajdhani', sans-serif;
+    color: #DC33F3;
+    padding: 20px 40px;
+    cursor: pointer;
+
+    /* Responsive styles for different screen sizes */
+    @media (max-width: 480px) {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
