@@ -28,6 +28,8 @@ services:
       - redis
     networks:
       - default
+    ports:
+      - "8888:8888"
     restart: unless-stopped
 
   backend:
@@ -35,7 +37,6 @@ services:
     command: "uvicorn main:fast_app --reload --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
-      - "8888:8888"
     depends_on:
       - redis
       - celery

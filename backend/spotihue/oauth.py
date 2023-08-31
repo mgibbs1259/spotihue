@@ -18,7 +18,7 @@ def start_local_http_server(port, handler=oauth2.RequestHandler):
     return server
 
 
-class SpotihueOauth(oauth2.SpotifyOAuth):
+class SpotifyOauth(oauth2.SpotifyOAuth):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.auth_url = self.get_authorize_url(state=self.state)
@@ -40,8 +40,8 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
                 f"in Docker) - please navigate here: {self.auth_url}"
             )
 
-    def _get_auth_response_local_server(self, redirect_port: int) -> str:
-        """Gets user auth response using a local server.
+    def _get_auth_response_local_server(self, redirect_port: int, open_browser: Optional[bool] = False) -> str:
+        """ Gets user auth response using a local server.
 
         Args:
             redirect_port (int): port for local redirect socket to listen on.
@@ -50,8 +50,13 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             str: auth code from Spotify.
         """
         server = start_local_http_server(redirect_port)
-        self._open_auth_url()
+        logger.info(f'Listening on port {redirect_port} for Spotify callback...')
+
+        if open_browser:
+            self._open_auth_url()
+
         server.handle_request()
+        logger.info('Callback received!')
 
         if self.state is not None and server.state != self.state:
             raise oauth2.SpotifyStateError(self.state, server.state)
@@ -77,11 +82,6 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
         Returns:
             str: auth code from Spotify.
         """
-        logger.info(
-            "User authentication with Spotify requires interaction with your web browser. "
-            "Once you enter your credentials and give authorization, you will be redirected to "
-            "a url."
-        )
 
         redirect_info = parse.urlparse(self.redirect_uri)
         redirect_host, redirect_port = util.get_host_port(redirect_info.netloc)
@@ -90,13 +90,12 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             open_browser = self.open_browser
 
         if (
-            open_browser is True
-            and redirect_host in ("127.0.0.1", "localhost")
+            redirect_host in ("127.0.0.1", "localhost")
             and redirect_info.scheme == "http"
             and redirect_port
         ):
             try:
-                return self._get_auth_response_local_server(redirect_port)
+                return self._get_auth_response_local_server(redirect_port, open_browser=open_browser)
             except oauth2.SpotifyOauthError as e:
                 logger.error(str(e))
                 raise
@@ -108,7 +107,7 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             )
             logger.warning(warning_message)
             try:
-                self._get_auth_response_interactive(open_browser=open_browser)
+                return self._get_auth_response_interactive(open_browser=open_browser)
             except EOFError as e:
                 logger.error(str(e))
                 raise oauth2.SpotifyOauthError(warning_message)
