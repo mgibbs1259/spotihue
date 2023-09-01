@@ -149,39 +149,6 @@ class SpotiHue:
             else:
                 return False
 
-    def spotify_ready(self) -> bool:
-        """ Checks whether a Spotify access token has been obtained. If access token is expired, refreshes it
-        and returns True.
-
-        Returns:
-             bool: Whether an access token exists in Spotify's auth manager's cache.
-        """
-        spotify_token = self.spotify_oauth.validate_token(
-            self.spotify_oauth.cache_handler.get_cached_token()
-        )
-        token_exists = bool(spotify_token is not None)
-        return token_exists
-
-    def hue_ready(self, raise_exception: bool = False) -> bool:
-        """ Checks whether connection to Hue bridge can be made.
-        If hue bridge is already initialized, connect to it.
-
-        Args:
-            raise_exception (bool): Whether to re-raise exceptions caught in this method.
-
-        Returns:
-             bool: Whether Hue bridge connection is instantiated and current.
-        """
-        try:
-            self.hue_bridge.connect()
-            return True
-        except Exception as e:
-            logger.error(f'Hue bridge connection failed: {e}')
-            if raise_exception:
-                raise
-            else:
-                return False
-
     def _get_current_track(self) -> Optional[dict]:
         """Gets currently-playing track on Spotify (if there is one).
 
