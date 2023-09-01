@@ -580,4 +580,4 @@ class SpotiHue:
             kmeans_cluster_centers
         )
 
-        self.hue_bridge.change_light_colors(lights, light_color_values)
+        self.hue_bridge.change_lights_colors(lights, light_color_values)
