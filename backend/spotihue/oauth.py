@@ -1,7 +1,7 @@
 import logging
-from typing import Optional
-from urllib import parse
 import webbrowser
+from urllib import parse
+from typing import Optional
 
 from spotipy import oauth2, util
 
@@ -18,26 +18,27 @@ def start_local_http_server(port, handler=oauth2.RequestHandler):
     return server
 
 
-class SpotihueOauth(oauth2.SpotifyOAuth):
-
+class SpotifyOauth(oauth2.SpotifyOAuth):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.auth_url = self.get_authorize_url(state=self.state)
 
     def _open_auth_url(self) -> None:
-        """ Opens Spotify user auth url in a new browser tab, if possible.
+        """Opens Spotify user auth url in a new browser tab, if possible.
 
         Returns: None
         """
         try:
             success = webbrowser.open_new_tab(self.auth_url)
             if success:
-                logger.info(f'Opened {self.auth_url} in your browser')
+                logger.info(f"Opened {self.auth_url} in your browser")
             else:
                 raise webbrowser.Error()
         except webbrowser.Error:
-            logger.error(f'Failed to open auth URL in your browser (likely because you\'re running this '
-                         f'in Docker) - please navigate here: {self.auth_url}')
+            logger.error(
+                f"Failed to open auth URL in your browser (likely because you're running this "
+                f"in Docker) - please navigate here: {self.auth_url}"
+            )
 
     def _get_auth_response_local_server(self, redirect_port: int, open_browser: Optional[bool] = False) -> str:
         """ Gets user auth response using a local server.
@@ -55,7 +56,7 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             self._open_auth_url()
 
         server.handle_request()
-        logger.info(f'Callback received!')
+        logger.info('Callback received!')
 
         if self.state is not None and server.state != self.state:
             raise oauth2.SpotifyStateError(self.state, server.state)
@@ -63,12 +64,16 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
         if server.auth_code is not None:
             return server.auth_code
         elif server.error is not None:
-            raise oauth2.SpotifyOauthError("Received error from OAuth server: {}".format(server.error))
+            raise oauth2.SpotifyOauthError(
+                "Received error from OAuth server: {}".format(server.error)
+            )
         else:
-            raise oauth2.SpotifyOauthError("Server listening on localhost has not been accessed")
+            raise oauth2.SpotifyOauthError(
+                "Server listening on localhost has not been accessed"
+            )
 
     def get_auth_response(self, open_browser: Optional[bool] = None) -> str:
-        """ Gets user authorization from Spotify (ie, an auth code that can be exchanged with Spotify
+        """Gets user authorization from Spotify (ie, an auth code that can be exchanged with Spotify
         for a refreshable access token).
 
         Args:
@@ -77,9 +82,6 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
         Returns:
             str: auth code from Spotify.
         """
-        logger.info('User authentication with Spotify requires interaction with your web browser. '
-                    'Once you enter your credentials and give authorization, you will be redirected to '
-                    'a url.')
 
         redirect_info = parse.urlparse(self.redirect_uri)
         redirect_host, redirect_port = util.get_host_port(redirect_info.netloc)
@@ -88,7 +90,6 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
             open_browser = self.open_browser
 
         if (
-
             redirect_host in ("127.0.0.1", "localhost")
             and redirect_info.scheme == "http"
             and redirect_port
@@ -99,9 +100,11 @@ class SpotihueOauth(oauth2.SpotifyOAuth):
                 logger.error(str(e))
                 raise
         else:
-            warning_message = 'Interactively pasting your redirect url won\'t work if you are running this ' \
-                              'in Docker. Set backend/.env file SPOTIFY_REDIRECT_URL to a valid ' \
-                              '`http://localhost:<port>` formatted value.'
+            warning_message = (
+                "Interactively pasting your redirect url won't work if you are running this "
+                "in Docker. Set backend/.env file SPOTIFY_REDIRECT_URL to a valid "
+                "`http://localhost:<port>` formatted value."
+            )
             logger.warning(warning_message)
             try:
                 return self._get_auth_response_interactive(open_browser=open_browser)

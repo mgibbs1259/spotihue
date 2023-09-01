@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 @celery_app.task
 def run_spotihue(lights: List[str]) -> None:
     logger.info("Running spotihue")
+    spotihue.change_all_lights_to_normal_color(lights)
 
     while spotihue.ascertain_track_playing():
         last_track_info = redis_client.hgetall(constants.REDIS_TRACK_INFORMATION_KEY)
@@ -65,9 +66,9 @@ def listen_for_spotify_redirect() -> None:
 
     try:
         auth_code = spotify_oauth.get_auth_response()
-        logger.info(f'Received user authorization from Spotify')
+        logger.info('Received user authorization from Spotify')
         spotify_oauth.get_access_token(code=auth_code, check_cache=False)
-        logger.info(f'Cached access token from Spotify')
+        logger.info('Cached access token from Spotify')
     except SpotifyOauthError as e:
         logger.error(str(e))
         raise

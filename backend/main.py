@@ -20,11 +20,28 @@ class StandardResponse(BaseModel):
 fast_app = FastAPI()
 
 
-@fast_app.get("/hue-ready")
-def hue_setup_complete():
+@fast_app.get("/ready")
+def spotihue_ready():
     hue_set_up = spotihue.hue_ready()
-    return StandardResponse(success=True, message='Hue setup complete' if hue_set_up else 'Hue setup not complete',
-                            data={'ready': hue_set_up})
+    spotify_authorized = spotihue.spotify_ready()
+    success = bool(hue_set_up and spotify_authorized)
+
+    data = {
+        'hue_ready': hue_set_up,
+        'spotify_ready': spotify_authorized
+    }
+    message = ''
+
+    if success:
+        message = 'Setup complete'
+    elif hue_set_up and not spotify_authorized:
+        message = 'Spotify setup incomplete'
+    elif spotify_authorized and not hue_set_up:
+        message = 'Hue setup incomplete'
+    else:
+        message = 'Setup incomplete'
+
+    return StandardResponse(success=success, message=message, data=data)
 
 
 @fast_app.post("/setup-hue")
@@ -36,13 +53,6 @@ def setup_hue():
         return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
 
     return StandardResponse(success=True, message='Hue setup task running', data={"setup_running": True})
-
-
-@fast_app.get("/spotify-ready")
-def spotify_authorization_complete():
-    spotify_authorized = spotihue.spotify_ready()
-    return StandardResponse(success=True, message='Authorized' if spotify_authorized else 'Not Authorized',
-                            data={'ready': spotify_authorized})
 
 
 @fast_app.get("/authorize-spotify")
@@ -63,20 +73,21 @@ def authorize_spotify():
 async def retrieve_available_lights():
     try:
         available_lights = spotihue.retrieve_available_lights()
-        data = {"lights": available_lights}
 
         if available_lights:
             response = StandardResponse(
                 success=True,
                 message="Available lights retrieved successfully",
-                data=data,
+                data=available_lights,
             )
         else:
-            response = StandardResponse(success=True, message="No available lights", data=data)
+            response = StandardResponse(
+                success=True, message="No available lights", data=available_lights
+            )
 
     except Exception as e:
-        logger.error(f'Error retrieving available lights: {e}')
-        raise HTTPException(status_code=500, detail=f"Internal Server Error")
+        logger.error(f"Error retrieving available lights: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return response
 
@@ -84,7 +95,7 @@ async def retrieve_available_lights():
 @fast_app.post("/selected-lights")
 def store_selected_lights(lights: List[str]):
     if not lights:
-        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+        raise HTTPException(status_code=400, detail='"lights" list is required.')
 
     try:
         redis_client.set(constants.REDIS_SELECTED_LIGHTS_KEY, ",".join(lights))
@@ -94,14 +105,14 @@ def store_selected_lights(lights: List[str]):
         )
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error storing selected lights: {redis_err}')
+        logger.error(f"Redis error storing selected lights: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
 
 
 @fast_app.put("/start-spotihue")
 async def start_spotihue(lights: List[str] = None):
     if not lights:
-        raise HTTPException(status_code=400, detail='\"lights\" list is required.')
+        raise HTTPException(status_code=400, detail='"lights" list is required.')
 
     available_lights = spotihue.retrieve_available_lights()
     lights = [light for light in lights if light in available_lights]
@@ -115,13 +126,13 @@ async def start_spotihue(lights: List[str] = None):
         return StandardResponse(success=True, message="spotihue started")
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error starting spotihue: {redis_err}')
+        logger.error(f"Redis error starting spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
-        logger.error(f'Error starting spotihue: {e}')
+        logger.error(f"Error starting spotihue: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
 
@@ -137,7 +148,7 @@ async def retrieve_current_track_information():
         )
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error getting current Spotify track: {str(redis_err)}')
+        logger.error(f"Redis error getting current Spotify track: {str(redis_err)}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
 
     return response
@@ -156,13 +167,13 @@ async def stop_spotihue():
             response = StandardResponse(success=True, message="spotihue is not running")
 
     except redis.exceptions.RedisError as redis_err:
-        logger.error(f'Redis error stopping spotihue: {redis_err}')
+        logger.error(f"Redis error stopping spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
         logger.error(f'Celery error starting spotihue: {celery_err}')
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
-        logger.error(f'Error starting spotihue: {e}')
+        logger.error(f"Error starting spotihue: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
     return response
