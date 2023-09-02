@@ -13,14 +13,9 @@
   color: white;
 }
 
-.app-title {
-  font-size: 2rem;
-  color: #ffffff;
-}
-
 /* Add media query for mobile */
 @media (max-width: 480px) {
   .app-container {
-    padding: 30px;
+    padding: 0px;
   }
 }

@@ -1,26 +1,69 @@
 import './App.css';
-import GreenBorderButton from './components/GreenBorderButton';
+import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import ButtonContainer from './components/ButtonContainer';
+import ConfigureModal from './components/ConfigureModal';
+import PrimaryButton from './components/PrimaryButton';
 
 function App() {
-  const handleApiRequest = async (apiEndPoint) => {
-    try {
-      const response = await fetch(apiEndPoint);
-      const data = await response.json();
-      console.log(data); // Handle the API response data
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
+  const [apiReadyResponse, setApiReadyResponse] = useState(null);
+
+  const [isHueModalOpen, setIsHueModalOpen] = useState(false);
+  const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
+
+  const openHueModal = () => {
+    setIsHueModalOpen(true);
   };
 
+  const closeHueModal = () => {
+    setIsHueModalOpen(false);
+  };
+
+  const openSpotifyModal = () => {
+    setIsSpotifyModalOpen(true);
+  };
+
+  const closeSpotifyModal = () => {
+    setIsSpotifyModalOpen(false);
+  };
+
+  // Use useEffect to make an API call on initial page load
+  useEffect(() => {
+    // Function to fetch data from API
+    const fetctConfigurationStatusData = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/ready');
+        const responseData = response.data;
+        setApiReadyResponse(responseData);
+        console.log(responseData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    // Call the fetctConfigurationStatusData function when the component mounts
+    fetctConfigurationStatusData();
+  }, []); // The empty dependency array ensures this effect runs only once after mount
+
+  //apiReadyResponse.data.hue_ready and apiReadyResponse.data.spotify_ready
   return (
     <div className="app">
-      <div className="app-container">     
-        <div>
-          <GreenBorderButton text="configure" fontSize="40px" />
-        </div>
-        <div>
-          <GreenBorderButton text="configure" fontSize="40px" />
-        </div>
+      <div className="app-container"> 
+      {apiReadyResponse &&     
+        <ButtonContainer>
+          <PrimaryButton text="configure hue" fontSize="40px" disabled={false} onClick={openHueModal}/>
+          <PrimaryButton text="configure spotify" fontSize="40px" disabled={false} onClick={openSpotifyModal}/>
+        </ButtonContainer>}
+      {isHueModalOpen &&
+          <ConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal}>
+            press and hold button on top of the Hue Bridge for about 3 seconds
+          </ConfigureModal>
+        }
+      {isSpotifyModalOpen &&
+        <ConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal}>
+          paste this into a browser tab
+        </ConfigureModal>
+      }
       </div>
     </div>
   );

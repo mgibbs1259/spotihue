@@ -3,6 +3,7 @@ from typing import Any, List
 
 from celery import exceptions as celery_exceptions
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import redis
 
@@ -18,6 +19,13 @@ class StandardResponse(BaseModel):
 
 
 fast_app = FastAPI()
+fast_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @fast_app.get("/ready")
@@ -26,20 +34,17 @@ def spotihue_ready():
     spotify_authorized = spotihue.spotify_ready()
     success = bool(hue_set_up and spotify_authorized)
 
-    data = {
-        'hue_ready': hue_set_up,
-        'spotify_ready': spotify_authorized
-    }
-    message = ''
+    data = {"hue_ready": hue_set_up, "spotify_ready": spotify_authorized}
+    message = ""
 
     if success:
-        message = 'Setup complete'
+        message = "Setup complete"
     elif hue_set_up and not spotify_authorized:
-        message = 'Spotify setup incomplete'
+        message = "Spotify setup incomplete"
     elif spotify_authorized and not hue_set_up:
-        message = 'Hue setup incomplete'
+        message = "Hue setup incomplete"
     else:
-        message = 'Setup incomplete'
+        message = "Setup incomplete"
 
     return StandardResponse(success=success, message=message, data=data)
 
@@ -49,10 +54,16 @@ def setup_hue():
     try:
         tasks.setup_hue.delay(retries=3)
     except Exception as e:
-        logger.error(f'Error invoking Hue setup task: {e}')
-        return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
+        logger.error(f"Error invoking Hue setup task: {e}")
+        return StandardResponse(
+            success=False,
+            message="Error invoking Hue setup task",
+            data={"setup_running": False},
+        )
 
-    return StandardResponse(success=True, message='Hue setup task running', data={"setup_running": True})
+    return StandardResponse(
+        success=True, message="Hue setup task running", data={"setup_running": True}
+    )
 
 
 @fast_app.get("/authorize-spotify")
@@ -62,11 +73,18 @@ def authorize_spotify():
     try:
         tasks.listen_for_spotify_redirect.delay()
     except celery_exceptions.CeleryError as celery_err:
-        logger.error(f'Error invoking Spotify authorization task: {celery_err}')
-        return StandardResponse(success=False, message='Error invoking Hue setup task', data={"setup_running": False})
+        logger.error(f"Error invoking Spotify authorization task: {celery_err}")
+        return StandardResponse(
+            success=False,
+            message="Error invoking Hue setup task",
+            data={"setup_running": False},
+        )
 
-    return StandardResponse(success=True, message='Paste this into a browser tab',
-                            data={'auth_url': spotify_user_auth_url})
+    return StandardResponse(
+        success=True,
+        message="Paste this into a browser tab",
+        data={"auth_url": spotify_user_auth_url},
+    )
 
 
 @fast_app.get("/available-lights")
@@ -129,7 +147,7 @@ async def start_spotihue(lights: List[str] = None):
         logger.error(f"Redis error starting spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
-        logger.error(f'Celery error starting spotihue: {celery_err}')
+        logger.error(f"Celery error starting spotihue: {celery_err}")
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
         logger.error(f"Error starting spotihue: {e}")
@@ -170,7 +188,7 @@ async def stop_spotihue():
         logger.error(f"Redis error stopping spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
-        logger.error(f'Celery error starting spotihue: {celery_err}')
+        logger.error(f"Celery error starting spotihue: {celery_err}")
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
         logger.error(f"Error starting spotihue: {e}")
