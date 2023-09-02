@@ -8,6 +8,7 @@ x-api-common: &api-common
       - ./backend/.env
   volumes:
       - ./backend:/backend
+  user: spotihue_backend
 
 services:
   redis:
