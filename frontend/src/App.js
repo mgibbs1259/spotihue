@@ -7,7 +7,6 @@ import PrimaryButton from './components/PrimaryButton';
 
 function App() {
   const [apiReadyResponse, setApiReadyResponse] = useState(null);
-
   const [isHueModalOpen, setIsHueModalOpen] = useState(false);
   const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
 
@@ -55,14 +54,10 @@ function App() {
           <PrimaryButton text="configure spotify" fontSize="40px" disabled={false} onClick={openSpotifyModal}/>
         </ButtonContainer>}
       {isHueModalOpen &&
-          <ConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal}>
-            press and hold button on top of the Hue Bridge for about 3 seconds
-          </ConfigureModal>
-        }
+          <ConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
+      }
       {isSpotifyModalOpen &&
-        <ConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal}>
-          paste this into a browser tab
-        </ConfigureModal>
+        <ConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
       }
       </div>
     </div>
