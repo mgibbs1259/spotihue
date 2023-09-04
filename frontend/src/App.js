@@ -2,7 +2,8 @@ import './App.css';
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import ButtonContainer from './components/ButtonContainer';
-import ConfigureModal from './components/ConfigureModal';
+import HueConfigureModal from './components/HueConfigureModal';
+import SpotifyConfigureModal from './components/SpotifyConfigureModal';
 import PrimaryButton from './components/PrimaryButton';
 
 function App() {
@@ -42,7 +43,7 @@ function App() {
 
     // Call the fetctConfigurationStatusData function when the component mounts
     fetctConfigurationStatusData();
-  }, []); // The empty dependency array ensures this effect runs only once after mount
+  }, [isHueModalOpen, isSpotifyModalOpen]); 
 
   //apiReadyResponse.data.hue_ready and apiReadyResponse.data.spotify_ready
   return (
@@ -50,14 +51,14 @@ function App() {
       <div className="app-container"> 
       {apiReadyResponse &&     
         <ButtonContainer>
-          <PrimaryButton text="configure hue" fontSize="40px" disabled={false} onClick={openHueModal}/>
-          <PrimaryButton text="configure spotify" fontSize="40px" disabled={false} onClick={openSpotifyModal}/>
+          <PrimaryButton text="configure hue" fontSize="40px" disabled={apiReadyResponse.data.hue_ready} onClick={openHueModal}/>
+          <PrimaryButton text="configure spotify" fontSize="40px" disabled={apiReadyResponse.data.spotify_ready} onClick={openSpotifyModal}/>
         </ButtonContainer>}
       {isHueModalOpen &&
-          <ConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
+          <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
       }
       {isSpotifyModalOpen &&
-        <ConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
+          <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
       }
       </div>
     </div>
