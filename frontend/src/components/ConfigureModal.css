@@ -37,6 +37,12 @@
     padding: 20px 40px;
 }
 
+.modal-header {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+}
+
 .modal-footer {
     margin-top: 40px;
     align-items: center;

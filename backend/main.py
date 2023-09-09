@@ -133,7 +133,7 @@ async def start_spotihue(lights: List[str] = None):
         raise HTTPException(status_code=400, detail='"lights" list is required.')
 
     available_lights = spotihue.retrieve_available_lights()
-    lights = [light for light in lights if light in available_lights]
+    # lights = [light for light in lights if light in available_lights]
 
     try:
         # TODO: make this idempotent
