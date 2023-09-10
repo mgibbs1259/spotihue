@@ -20,4 +20,4 @@ spotihue = spotihue.SpotiHue(
     redis_client=redis_client
 )
 
-celery_app = celery.Celery("celery_app", broker="redis://redis:6379")
+celery_app = celery.Celery("celery_app", backend="redis://redis:6379", broker="redis://redis:6379")
