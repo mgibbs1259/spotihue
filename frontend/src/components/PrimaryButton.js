@@ -24,7 +24,7 @@ PrimaryButton.propTypes = {
   text: PropTypes.string.isRequired,
   fontSize: PropTypes.string.isRequired,
   disabled: PropTypes.bool, // Whether the button is disabled (greyed out)
-  onClick: PropTypes.func, // Optional click handler for API request
+  onClick: PropTypes.func, // Optional click handler
 };
 
 export default PrimaryButton;

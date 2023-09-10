@@ -5,11 +5,13 @@ import ButtonContainer from './components/ButtonContainer';
 import HueConfigureModal from './components/HueConfigureModal';
 import SpotifyConfigureModal from './components/SpotifyConfigureModal';
 import PrimaryButton from './components/PrimaryButton';
+import SelectLightButton from './components/SelectLightButton';
 
 function App() {
   const [apiReadyResponse, setApiReadyResponse] = useState(null);
   const [isHueModalOpen, setIsHueModalOpen] = useState(false);
   const [isSpotifyModalOpen, setIsSpotifyModalOpen] = useState(false);
+  const [areBothConfigurationsReady, setAreBothConfigurationsReady] = useState(false);
 
   const openHueModal = () => {
     setIsHueModalOpen(true);
@@ -35,6 +37,13 @@ function App() {
         const response = await axios.get('http://localhost:8000/ready');
         const responseData = response.data;
         setApiReadyResponse(responseData);
+
+        if (responseData.data.hue_ready && responseData.data.spotify_ready) {
+          setAreBothConfigurationsReady(true);
+        } else {
+          setAreBothConfigurationsReady(false);
+        }
+
         console.log(responseData);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -50,13 +59,37 @@ function App() {
     <div className="app">
       <div className="app-container"> 
       {apiReadyResponse &&     
-        <ButtonContainer>
-          <PrimaryButton text="configure hue" fontSize="40px" disabled={apiReadyResponse.data.hue_ready} onClick={openHueModal}/>
-          <PrimaryButton text="configure spotify" fontSize="40px" disabled={apiReadyResponse.data.spotify_ready} onClick={openSpotifyModal}/>
-        </ButtonContainer>}
+         <ButtonContainer>
+         {!areBothConfigurationsReady && (
+           <>
+             <PrimaryButton
+               text="configure hue"
+               fontSize="40px"
+               disabled={apiReadyResponse.data.hue_ready}
+               onClick={openHueModal}
+             />
+             <PrimaryButton
+               text="configure spotify"
+               fontSize="40px"
+               disabled={apiReadyResponse.data.spotify_ready}
+               onClick={openSpotifyModal}
+             />
+           </>
+         )}
+
+         {areBothConfigurationsReady && (
+           <>
+             <SelectLightButton lightName="light 1" />
+             <SelectLightButton lightName="light 2" />
+           </>
+         )}
+       </ButtonContainer>
+      }
+
       {isHueModalOpen &&
           <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
       }
+
       {isSpotifyModalOpen &&
           <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
       }
