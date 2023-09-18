@@ -126,7 +126,7 @@ async def start_spotihue(lights: List[str] = None):
             forget_spotihue = tasks.clear_spotihue_task_id.signature()
             task = tasks.run_spotihue.apply_async(
                 (lights,),
-                {'current_track_retries': 3},
+                {'current_track_retries': 10},
                 link=forget_spotihue,
                 link_error=forget_spotihue
             )

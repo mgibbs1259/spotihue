@@ -353,6 +353,12 @@ class SpotiHue:
     def retrieve_current_track_information(self, supply_defaults: bool = True) -> dict:
         """Retrieves information about the current track.
 
+        Args:
+            supply_defaults (bool): Whether to return default "track unavailable" values if no current 
+            track is found. If True, then a dictionary populated with default values is returned when 
+            no current track exists. If False, then an empty dictionary is returned when no current track 
+            exists.
+
         Returns:
             dict: A dictionary containing the current track's name, artist, album, and album artwork URL.
             Returns default values if the current track information is not available.
