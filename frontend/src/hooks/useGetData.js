@@ -10,7 +10,7 @@ export function useGetData(apiEndpoint) {
     async function getDataApi() {
       try {
         const response = await getData(apiEndpoint);
-        setData(response);
+        setData(response.data);
       } catch (error) {
         setError(error);
       } finally {

@@ -10,7 +10,7 @@ export function usePostData(apiEndpoint) {
     async function postDataApi() {
       try {
         const response = await postData(apiEndpoint);
-        setData(response);
+        setData(response.data);
       } catch (error) {
         setError(error);
       } finally {

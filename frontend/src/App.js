@@ -5,7 +5,7 @@ import ButtonContainer from './components/ButtonContainer';
 import HueConfigureModal from './components/HueConfigureModal';
 import SpotifyConfigureModal from './components/SpotifyConfigureModal';
 import PrimaryButton from './components/PrimaryButton';
-import SelectLightButton from './components/SelectLightButton';
+import SelectLightsContainer from './containers/SelectLightsContainer';
 
 function App() {
   const [apiReadyResponse, setApiReadyResponse] = useState(null);
@@ -76,15 +76,12 @@ function App() {
              />
            </>
          )}
-
-         {areBothConfigurationsReady && (
-           <>
-             <SelectLightButton lightName="light 1" />
-             <SelectLightButton lightName="light 2" />
-           </>
-         )}
        </ButtonContainer>
       }
+
+      {areBothConfigurationsReady && (
+          <SelectLightsContainer/>
+         )}
 
       {isHueModalOpen &&
           <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>

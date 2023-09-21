@@ -7,23 +7,24 @@ import lightErrorImage from '../assets/light-error.png';
 
 const SelectLightButton = ({ lightName, onClick }) => {
     const hasLightName = !!lightName;
-
     const [selected, setSelected] = useState(false);
-  
-    const buttonClasses = [
-        'select-light-button',
-        hasLightName ? (selected ? 'select-light-button-clicked' : 'select-light-button-not-clicked'): 'select-light-button-no-lights',
-      ].join(' ');
-    
+
     const handleButtonClick = () => {
-        setSelected(!selected);
-        if (onClick) {
-            onClick();
-          }
+      setSelected(!selected);
+      if (onClick) {
+          onClick();
+        }
     };
 
     const imageSource = hasLightName ? (selected ? lightSelectedImage : lightDeselectedImage): lightErrorImage;
-    
+
+    const buttonClasses = [
+      'select-light-button',
+      hasLightName ? (selected ? 'select-light-button-clicked' : 'select-light-button-not-clicked'): 'select-light-button-no-lights',
+    ].join(' ');
+
+    const buttonText = hasLightName ? lightName : 'no lights available';
+
     return (
         <div className="select-light-button-container">
             <img src={imageSource} alt="light bulb" className="light-bulb-image" />
@@ -32,7 +33,7 @@ const SelectLightButton = ({ lightName, onClick }) => {
                 onClick={handleButtonClick}
                 disabled={!hasLightName}
             >
-                {hasLightName ? (selected ? `${lightName}` : `${lightName}`) : 'no lights available'}
+                {buttonText}
             </button>
         </div>
     );
