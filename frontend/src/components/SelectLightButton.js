@@ -12,7 +12,7 @@ const SelectLightButton = ({ lightName, onClick }) => {
     const handleButtonClick = () => {
       setSelected(!selected);
       if (onClick) {
-          onClick();
+          onClick(lightName);
         }
     };
 
