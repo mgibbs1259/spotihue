@@ -2,20 +2,24 @@ FROM python:3.10
 
 ENV PYTHONUNBUFFERED=1
 
-RUN mkdir /backend
 WORKDIR /backend
 
+# install non-python dependencies
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
+# install python dependencies
 RUN pip install --upgrade pip
-
 COPY requirements.txt /backend/
 RUN pip install -r requirements.txt
 
-# Set non-root user to run celery and spotihue API
-RUN useradd -U -m -s /bin/bash spotihue_backend
-RUN chown -R -v :spotihue_backend /backend/
-USER spotihue_backend:spotihue_backend
+# set non-root user to run spotihue backend (celery + API)
+RUN useradd -m -s /bin/bash spotihue_backend
+RUN groupadd docker
+RUN usermod -aG docker spotihue_backend
+RUN chown -R spotihue_backend /backend/
 
+USER spotihue_backend:docker
+
+# expose ports
 EXPOSE 8000
 EXPOSE 8888

@@ -1,6 +1,5 @@
 FROM node:latest
 
-RUN mkdir /frontend
 WORKDIR /frontend
 
 # copy dependency definitions
@@ -10,15 +9,15 @@ COPY package-lock.json /frontend/package-lock.json
 # install dependencies
 RUN npm ci
 
-# copy necessary app code
-COPY . /frontend
+# set non-root user to run spotihue UI
+RUN useradd -m -s /bin/bash spotihue_frontend
+RUN groupadd docker
+RUN usermod -aG docker spotihue_frontend
+RUN chown -R spotihue_frontend /frontend/
+
+USER spotihue_frontend:docker
 
 # expose port
 EXPOSE 3000
-
-# Set non-root user to run spotihue UI
-RUN useradd -U -m -s /bin/bash spotihue_frontend
-RUN chown -R -v :spotihue_frontend /frontend/
-USER spotihue_frontend:spotihue_frontend
 
 CMD ["npm", "start"]

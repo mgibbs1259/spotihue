@@ -8,7 +8,6 @@ x-api-common: &api-common
       - ./backend/.env
   volumes:
       - ./backend:/backend
-  user: spotihue_backend
 
 services:
   redis:
@@ -35,7 +34,7 @@ services:
     restart: unless-stopped
 
   backend:
-    container_name: spotihue-api
+    container_name: api
     <<: *api-common
     command: "uvicorn main:fast_app --reload --host 0.0.0.0 --port 8000"
     ports:
@@ -48,7 +47,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    container_name: spotihue-ui
+    container_name: ui
     build:
      context: ./frontend
      dockerfile: Dockerfile.ui
