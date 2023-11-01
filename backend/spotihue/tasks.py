@@ -1,14 +1,91 @@
+from contextlib import contextmanager
+from functools import wraps
 import logging
 import random
 import time
-from typing import List
+from typing import Generator, List
 
+from celery.app import task
 from phue import PhueException
+from redis import Redis
 from spotipy.oauth2 import SpotifyOauthError
 
-from . import celery_app, constants, redis_client, spotihue
+from . import celery_app, constants, oauth, redis_client, spotihue
 
 logger = logging.getLogger(__name__)
+
+
+class SingletonTask(task.Task):
+
+    @staticmethod
+    def run_singleton_task(bound_task_function):
+        """Meant to decorate a bound celery task function such that there can only be 1 instance of the
+            task running at any given point.
+            Ex:
+
+            @celery_app.task(base=SingletonTask, bind=True)
+            @run_singleton_task
+            def my_celery_task(self, other_param):
+                pass
+
+        Args:
+            bound_task_function (Callable): a celery task function which is bound (ie. receives itself
+                as its 1st argument).
+
+        Returns:
+
+        """
+        @wraps(bound_task_function)
+        def wrapper(*args, **kwargs):
+            myself = args[0]
+            my_task_name = myself.name
+            my_task_id = myself.request.id
+
+            my_task_lock = SingletonTaskLock(lock_id=myself.name, redis=redis_client)
+
+            with my_task_lock.acquire_for(my_task_id) as acquired:
+                if acquired is True:
+                    logger.info(f'Acquired lock for {my_task_name}; running task {my_task_id}')
+                    return bound_task_function(*args, **kwargs)
+                else:
+                    logger.info(f'Another {my_task_name} task is already being invoked; exiting task {my_task_id}')
+
+        return wrapper
+
+
+class SingletonTaskLock:
+    """
+    lock_id (key) = task name.
+    lock values = task IDs.
+    """
+    LOCK_MAX_DURATION_SECONDS = 60 * 5  # 5 minutes
+
+    def __init__(self, lock_id: str, redis: Redis):
+        self.lock_id = lock_id
+        self.redis = redis
+
+    @contextmanager
+    def acquire_for(self, task_id: str) -> Generator[str, None, None]:
+        """Acquires simple Redis lock for a "singleton" celery task with ID task_id.
+
+        Args:
+            task_id (str): ID of a celery task that worker is trying to run.
+
+        Returns:
+            Generator[str, None, None]: context manager to get lock acquisition status for task,
+                then subsequently relinquish that acquired lock (assuming the initial acquisition
+                was successful).
+        """
+        lock = self.redis.get(self.lock_id)
+        lock_acquired = bool(lock is None or (isinstance(lock, bytes) and lock.decode('utf-8') == task_id))
+
+        try:
+            if lock_acquired:
+                self.redis.setex(self.lock_id, self.LOCK_MAX_DURATION_SECONDS, task_id)
+            yield lock_acquired
+        finally:
+            if lock_acquired:
+                self.redis.delete(self.lock_id)
 
 
 def is_spotihue_running() -> bool:
@@ -83,8 +160,9 @@ def run_spotihue(lights: List[str], current_track_retries: int = 0) -> None:
         time.sleep(sleep_duration)
 
 
-@celery_app.task
-def setup_hue(backoff_seconds: int = 5, retries: int = 5) -> None:
+@celery_app.task(base=SingletonTask, bind=True)
+@SingletonTask.run_singleton_task
+def setup_hue(self, backoff_seconds: int = 5, retries: int = 5) -> None:
     logger.info('Attempting to connect to Hue bridge...')
 
     for attempt in range(retries):
@@ -103,8 +181,9 @@ def setup_hue(backoff_seconds: int = 5, retries: int = 5) -> None:
                 raise
 
 
-@celery_app.task
-def listen_for_spotify_redirect() -> None:
+@celery_app.task(base=SingletonTask, bind=True, throws=(oauth.SpotifyOauthSocketTimeout,))
+@SingletonTask.run_singleton_task
+def listen_for_spotify_redirect(self) -> None:
     logger.info(f'Waiting to receive user authorization from Spotify...')
     spotify_oauth = spotihue.spotify_oauth
 
