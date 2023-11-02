@@ -8,7 +8,7 @@ from spotipy import oauth2, util
 
 logger = logging.getLogger(__name__)
 
-SPOTIFY_OAUTH_TIMEOUT = 60 * 2  # 2 minutes
+SPOTIFY_OAUTH_TIMEOUT = 60 * 3  # 3 minutes
 
 
 class HTTPServer(oauth2.HTTPServer):
