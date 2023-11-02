@@ -3,7 +3,7 @@ from functools import wraps
 import logging
 import random
 import time
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 from celery.app import task
 from phue import PhueException
@@ -32,16 +32,16 @@ class SingletonTask(task.Task):
             bound_task_function (Callable): a celery task function which is bound (ie. receives itself
                 as its 1st argument).
 
-        Returns:
+        Returns: decorator for a celery @task-decorated function/Task subclass .run() implementation.
 
         """
         @wraps(bound_task_function)
         def wrapper(*args, **kwargs):
-            myself = args[0]
-            my_task_name = myself.name
-            my_task_id = myself.request.id
+            me = args[0]
+            my_task_name = me.name
+            my_task_id = me.request.id
 
-            my_task_lock = SingletonTaskLock(lock_id=myself.name, redis=redis_client)
+            my_task_lock = SingletonTaskLock(lock_id=my_task_name, redis=redis_client)
 
             with my_task_lock.acquire_for(my_task_id) as acquired:
                 if acquired is True:
@@ -55,25 +55,26 @@ class SingletonTask(task.Task):
 
 class SingletonTaskLock:
     """
-    lock_id (key) = task name.
+    lock_id (key) = a task's name.
     lock values = task IDs.
     """
-    LOCK_MAX_DURATION_SECONDS = 60 * 5  # 5 minutes
+    DEFAULT_MAX_TTL = 60 * 5  # 5 minutes
 
-    def __init__(self, lock_id: str, redis: Redis):
+    def __init__(self, lock_id: str, redis: Redis, lock_max_ttl: Optional[int] = DEFAULT_MAX_TTL):
         self.lock_id = lock_id
         self.redis = redis
+        self.lock_max_ttl = lock_max_ttl
 
     @contextmanager
     def acquire_for(self, task_id: str) -> Generator[str, None, None]:
-        """Acquires simple Redis lock for a "singleton" celery task with ID task_id.
+        """Attempts to acquire a simple Redis lock for a "singleton" celery task with ID task_id.
 
         Args:
             task_id (str): ID of a celery task that worker is trying to run.
 
         Returns:
             Generator[str, None, None]: context manager to get lock acquisition status for task,
-                then subsequently relinquish that acquired lock (assuming the initial acquisition
+                then subsequently relinquish that acquired lock (if the initial acquisition
                 was successful).
         """
         lock = self.redis.get(self.lock_id)
@@ -81,7 +82,7 @@ class SingletonTaskLock:
 
         try:
             if lock_acquired:
-                self.redis.setex(self.lock_id, self.LOCK_MAX_DURATION_SECONDS, task_id)
+                self.redis.setex(self.lock_id, self.lock_max_ttl, task_id)
             yield lock_acquired
         finally:
             if lock_acquired:
