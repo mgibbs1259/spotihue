@@ -5,16 +5,16 @@ import ImageButton from './ImageButton';
 import './ConfigureModal.css';
 
 function useAuthorizeLink(apiEndpoint) {
-  const { data, isLoading, error } = useGetData(apiEndpoint);
+    const { data, isLoading, error } = useGetData(apiEndpoint);
 
-  useEffect(() => {
-    if (data && !isLoading && !error) {
-      // Open the URL in a new tab
-      window.open(data.data.data.auth_url, '_blank');
-    }
-  }, [data]);
+    useEffect(() => {
+        if (data && !isLoading && !error) {
+          // Open the URL in a new tab
+          window.open(data.data.auth_url, '_blank');
+        }
+    }, [data, isLoading, error]);
 
-  return { data, isLoading, error };
+    return { data, isLoading, error };
 }
 
 function SpotifyConfigureModal({ isOpen, onClose, apiEndpoint }) {

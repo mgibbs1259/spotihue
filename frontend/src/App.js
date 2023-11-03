@@ -32,7 +32,7 @@ function App() {
   // Use useEffect to make an API call on initial page load
   useEffect(() => {
     // Function to fetch data from API
-    const fetctConfigurationStatusData = async () => {
+    const fetchConfigurationStatusData = async () => {
       try {
         const response = await axios.get('http://localhost:8000/ready');
         const responseData = response.data;
@@ -50,14 +50,14 @@ function App() {
       }
     };
 
-    // Call the fetctConfigurationStatusData function when the component mounts
-    fetctConfigurationStatusData();
+    // Call the fetchConfigurationStatusData function when the component mounts
+    fetchConfigurationStatusData();
   }, [isHueModalOpen, isSpotifyModalOpen]); 
 
   //apiReadyResponse.data.hue_ready and apiReadyResponse.data.spotify_ready
   return (
     <div className="app">
-      <div className="app-container"> 
+      <div className="app-container">
       {apiReadyResponse &&     
          <ButtonContainer>
          {!areBothConfigurationsReady && (
