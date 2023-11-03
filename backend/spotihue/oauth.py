@@ -1,21 +1,31 @@
 import logging
 import webbrowser
-from urllib import parse
 from typing import Optional
+from urllib import parse
 
 from spotipy import oauth2, util
 
 
 logger = logging.getLogger(__name__)
 
+SPOTIFY_OAUTH_TIMEOUT = 60 * 3  # 3 minutes
+
+
+class HTTPServer(oauth2.HTTPServer):
+    timeout = SPOTIFY_OAUTH_TIMEOUT
+
 
 def start_local_http_server(port, handler=oauth2.RequestHandler):
-    server = oauth2.HTTPServer(("0.0.0.0", port), handler)
+    server = HTTPServer(("0.0.0.0", port), handler)
     server.allow_reuse_address = True
     server.auth_code = None
     server.auth_token_form = None
     server.error = None
     return server
+
+
+class SpotifyOauthSocketTimeout(oauth2.SpotifyOauthError):
+    pass
 
 
 class SpotifyOauth(oauth2.SpotifyOAuth):
@@ -68,8 +78,8 @@ class SpotifyOauth(oauth2.SpotifyOAuth):
                 "Received error from OAuth server: {}".format(server.error)
             )
         else:
-            raise oauth2.SpotifyOauthError(
-                "Server listening on localhost has not been accessed"
+            raise SpotifyOauthSocketTimeout(
+                "Server listening on localhost was not accessed"
             )
 
     def get_auth_response(self, open_browser: Optional[bool] = None) -> str:

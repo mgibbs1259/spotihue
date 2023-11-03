@@ -132,14 +132,23 @@ async def start_spotihue(lights: List[str] = None):
     if not lights:
         raise HTTPException(status_code=400, detail='"lights" list is required.')
 
-    available_lights = spotihue.retrieve_available_lights()
-    # lights = [light for light in lights if light in available_lights]
+    available_lights = [light['light_name'] for light in spotihue.retrieve_available_lights()]
+    lights = [light for light in lights if light in available_lights]
 
     try:
-        # TODO: make this idempotent
+        spotihue_task_running = tasks.is_spotihue_running()
 
-        task = tasks.run_spotihue.delay(lights)
-        redis_client.set("spotihue", str(task.id))
+        if spotihue_task_running:
+            logger.info('Spotihue is already running')
+        else:
+            forget_spotihue = tasks.clear_spotihue_task_id.signature()
+            task = tasks.run_spotihue.apply_async(
+                (lights,),
+                {'current_track_retries': 10},
+                link=forget_spotihue,
+                link_error=forget_spotihue
+            )
+            redis_client.set(constants.REDIS_SPOTIHUE_TASK_ID, str(task.id))
 
         return StandardResponse(success=True, message="spotihue started")
 
@@ -175,10 +184,13 @@ async def retrieve_current_track_information():
 @fast_app.put("/stop-spotihue")
 async def stop_spotihue():
     try:
-        spotihue_status = redis_client.get("spotihue")
-        if spotihue_status:
-            celery_app.control.revoke(spotihue_status, terminate=True)
-            redis_client.delete("spotihue")
+        spotihue_task_running = tasks.is_spotihue_running()
+
+        if spotihue_task_running:
+            spotihue_task_id = redis_client.get(constants.REDIS_SPOTIHUE_TASK_ID).decode('utf-8')
+            celery_app.control.revoke(spotihue_task_id, terminate=True)
+            logger.info(f'Terminated spotihue task {spotihue_task_id}')
+            tasks.clear_spotihue_task_id()
 
             response = StandardResponse(success=True, message="spotihue stopped")
         else:
@@ -188,10 +200,10 @@ async def stop_spotihue():
         logger.error(f"Redis error stopping spotihue: {redis_err}")
         raise HTTPException(status_code=500, detail=f"Redis Error")
     except celery_exceptions.CeleryError as celery_err:
-        logger.error(f"Celery error starting spotihue: {celery_err}")
+        logger.error(f"Celery error stopping spotihue: {celery_err}")
         raise HTTPException(status_code=500, detail=f"Celery Error")
     except Exception as e:
-        logger.error(f"Error starting spotihue: {e}")
+        logger.error(f"Error stopping spotihue: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error")
 
     return response

@@ -24,7 +24,7 @@ services:
   celery:
     container_name: celery
     <<: *api-common
-    command: celery -A main worker --loglevel=info
+    command: celery -A main worker --loglevel=info --statedb data/celery-worker.state
     depends_on:
       - redis
     networks:
