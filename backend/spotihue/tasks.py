@@ -78,6 +78,13 @@ class SingletonTaskLock:
                 was successful).
         """
         lock = self.redis.get(self.lock_id)
+
+        if lock is None:
+            # if there are 2 dueling tasks (queued within a few hundredths of a second
+            # apart), let one of them win.
+            time.sleep(random.uniform(.01, .1))
+            lock = self.redis.get(self.lock_id)
+
         lock_acquired = bool(lock is None or (isinstance(lock, bytes) and lock.decode('utf-8') == task_id))
 
         try:
