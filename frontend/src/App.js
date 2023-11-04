@@ -63,13 +63,13 @@ function App() {
          {!areBothConfigurationsReady && (
            <>
              <PrimaryButton
-               text="configure hue"
+               text={apiReadyResponse.data.hue_ready ? "hue configured" : "configure hue"}
                fontSize="40px"
                disabled={apiReadyResponse.data.hue_ready}
                onClick={openHueModal}
              />
              <PrimaryButton
-               text="configure spotify"
+               text={apiReadyResponse.data.spotify_ready ? "spotify configured" : "configure spotify"}
                fontSize="40px"
                disabled={apiReadyResponse.data.spotify_ready}
                onClick={openSpotifyModal}
@@ -84,11 +84,13 @@ function App() {
          )}
 
       {isHueModalOpen &&
-          <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
+          <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal}
+          apiEndpoint="http://localhost:8000/setup-hue"/>
       }
 
       {isSpotifyModalOpen &&
-          <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
+          <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal}
+          apiEndpoint="http://localhost:8000/authorize-spotify"/>
       }
       </div>
     </div>
