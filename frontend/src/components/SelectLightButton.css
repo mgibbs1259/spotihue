@@ -1,0 +1,51 @@
+.select-light-button-container {
+    display: flex;
+    align-items: center;
+}
+
+.light-bulb-image {
+    background-color: transparent;
+    height: 150px;
+    padding-right: 10px;
+    margin-right: 45px;
+
+    /* Responsive styles for different screen sizes */
+    @media (max-width: 480px) {
+        max-height: fit-content;
+        padding: 8px 16px;
+        margin-right: 20px;
+    }
+}
+
+.select-light-button {
+    border: 3px solid #00ff47;
+    border-radius: 20px;
+    background-color: transparent;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 40px;
+    padding: 20px 40px;
+    cursor: pointer;
+
+    /* Responsive styles for different screen sizes */
+    @media (max-width: 480px) {
+        border-radius: 20px;
+        height: auto;
+        padding: 20px 40px;
+        font-size: 40px;
+    }
+}
+
+.select-light-button-not-clicked {
+    color: #ffffff;
+}
+
+.select-light-button-clicked {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #DC33F3;
+}
+
+.select-light-button-no-lights {
+    border: 3px solid #ff0000;
+    color: #ff0000;
+    pointer-events: none;
+}
