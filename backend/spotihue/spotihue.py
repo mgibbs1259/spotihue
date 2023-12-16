@@ -350,22 +350,14 @@ class SpotiHue:
 
         return x, y
 
-    def ascertain_track_playing(self) -> bool:
-        """Determines if Spotify is currently playing a track.
-
-        Returns:
-            bool: True if Spotify is playing a track, False otherwise.
-        """
-        current_track = self._get_current_track()
-
-        if current_track is None:
-            return False
-
-        track_is_playing = current_track.get("is_playing")
-        return True if track_is_playing is True else False
-
-    def retrieve_current_track_information(self) -> dict:
+    def retrieve_current_track_information(self, supply_defaults: bool = True) -> dict:
         """Retrieves information about the current track.
+
+        Args:
+            supply_defaults (bool): Whether to return default "track unavailable" values if no current 
+            track is found. If True, then a dictionary populated with default values is returned when 
+            no current track exists. If False, then an empty dictionary is returned when no current track 
+            exists.
 
         Returns:
             dict: A dictionary containing the current track's name, artist, album, and album artwork URL.
@@ -377,7 +369,12 @@ class SpotiHue:
             "track_album": self._default_track_album,
             "track_album_artwork_url": self._default_track_album_artwork_url,
         }
-        current_track = self._get_current_track() or defaults
+        current_track = self._get_current_track()
+
+        if not current_track and supply_defaults is False:
+            return {}
+        elif not current_track:
+            current_track = defaults
 
         track_data = current_track.get("item", {})
         if not track_data:
