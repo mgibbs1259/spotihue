@@ -37,7 +37,11 @@ class SingletonTask(task.Task):
         """
         @wraps(bound_task_function)
         def wrapper(*args, **kwargs):
+            # Because this decorator is invoked statically above task declarations, we access
+            # the Task object's self via the following derpy line...
             me = args[0]
+
+            # ...so that we can collect the task's name and ID.
             my_task_name = me.name
             my_task_id = me.request.id
 
@@ -198,7 +202,7 @@ def setup_hue(self, backoff_seconds: int = 5, retries: int = 5) -> None:
 @celery_app.task(base=SingletonTask, bind=True, throws=(oauth.SpotifyOauthSocketTimeout,))
 @SingletonTask.run_singleton_task
 def listen_for_spotify_redirect(self) -> None:
-    logger.info(f'Waiting to receive user authorization from Spotify...')
+    logger.info('Waiting to receive user authorization from Spotify...')
     spotify_oauth = spotihue.spotify_oauth
 
     try:

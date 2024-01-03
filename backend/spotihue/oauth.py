@@ -1,4 +1,5 @@
 import logging
+import os
 import webbrowser
 from typing import Optional
 from urllib import parse
@@ -8,7 +9,7 @@ from spotipy import oauth2, util
 
 logger = logging.getLogger(__name__)
 
-SPOTIFY_OAUTH_TIMEOUT = 60 * 3  # 3 minutes
+SPOTIFY_OAUTH_TIMEOUT = os.getenv('SPOTIFY_OAUTH_TIMEOUT', 60 * 3)  # default 3 minutes
 
 
 class HTTPServer(oauth2.HTTPServer):
