@@ -12,7 +12,7 @@ RUN pip install --upgrade pip
 COPY requirements.txt /backend/
 RUN pip install -r requirements.txt
 
-# set non-root user to run celery and spotihue API
+# Set non-root user to run celery and spotihue API
 RUN useradd -U -m -s /bin/bash spotihue_backend
 RUN chown -R -v :spotihue_backend /backend/
 USER spotihue_backend:spotihue_backend
