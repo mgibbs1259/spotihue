@@ -3,3 +3,4 @@ SPOTIFY_SCOPE="user-read-currently-playing"
 SPOTIFY_CLIENT_ID=client_id
 SPOTIFY_CLIENT_SECRET=client_secret
 SPOTIFY_REDIRECT_URI="http://localhost:8888/callback/"
+SPOTIFY_OAUTH_TIMEOUT=180  # 3 minutes

@@ -37,7 +37,11 @@ class SingletonTask(task.Task):
         """
         @wraps(bound_task_function)
         def wrapper(*args, **kwargs):
+            # Because this decorator is invoked statically above task declarations, we access
+            # the Task object's self via the following derpy line...
             me = args[0]
+
+            # ...so that we can collect the task's name and ID.
             my_task_name = me.name
             my_task_id = me.request.id
 
