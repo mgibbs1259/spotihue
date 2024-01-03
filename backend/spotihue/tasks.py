@@ -107,10 +107,16 @@ def is_spotihue_running() -> bool:
     spotihue_task_id = redis_client.get(constants.REDIS_SPOTIHUE_TASK_ID)
 
     if spotihue_task_id:
-        spotihue_task_id = spotihue_task_id.decode('utf-8')
+        spotihue_task_id = spotihue_task_id.decode("utf-8")
 
-        task_query_result = celery_inspect.query_task(*[spotihue_task_id, ])
-        celery_host = list(task_query_result.keys())[0]  # we are only using the single celery worker
+        task_query_result = celery_inspect.query_task(
+            *[
+                spotihue_task_id,
+            ]
+        )
+        celery_host = list(task_query_result.keys())[
+            0
+        ]  # we are only using the single celery worker
 
         if task_query_result[celery_host].get(spotihue_task_id) is not None:
             return True
@@ -120,7 +126,7 @@ def is_spotihue_running() -> bool:
 
 @celery_app.task
 def clear_spotihue_task_id(*args, **kwargs):
-    logger.info('Clearing spotihue_task_id')
+    logger.info("Clearing spotihue_task_id")
     redis_client.delete(constants.REDIS_SPOTIHUE_TASK_ID)
 
 
@@ -141,11 +147,13 @@ def run_spotihue(lights: List[str], current_track_retries: int = 0) -> None:
         if not track_info:
             if retries_spent < current_track_retries:
                 retries_spent += 1
-                logger.info(f'No currently-playing track on Spotify; trying again in {retry_wait_seconds} seconds')
+                logger.info(
+                    f"No currently-playing track on Spotify; trying again in {retry_wait_seconds} seconds"
+                )
                 time.sleep(retry_wait_seconds)
                 continue
             else:
-                logger.info('No currently-playing track on Spotify; exiting')
+                logger.info("No currently-playing track on Spotify; exiting")
                 break  # task over.
 
         track_album_artwork_url = track_info["track_album_artwork_url"]
@@ -156,10 +164,7 @@ def run_spotihue(lights: List[str], current_track_retries: int = 0) -> None:
         if last_track_album_artwork_url:
             last_track_album_artwork_url = last_track_album_artwork_url.decode("utf-8")
 
-        redis_client.hset(
-            constants.REDIS_TRACK_INFORMATION_KEY,
-            mapping=track_info
-        )
+        redis_client.hset(constants.REDIS_TRACK_INFORMATION_KEY, mapping=track_info)
 
         if last_track_album_artwork_url != track_album_artwork_url:
             logger.info("Syncing lights")

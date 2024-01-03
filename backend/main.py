@@ -132,21 +132,23 @@ async def start_spotihue(lights: List[str] = None):
     if not lights:
         raise HTTPException(status_code=400, detail='"lights" list is required.')
 
-    available_lights = [light['light_name'] for light in spotihue.retrieve_available_lights()]
+    available_lights = [
+        light["light_name"] for light in spotihue.retrieve_available_lights()
+    ]
     lights = [light for light in lights if light in available_lights]
 
     try:
         spotihue_task_running = tasks.is_spotihue_running()
 
         if spotihue_task_running:
-            logger.info('Spotihue is already running')
+            logger.info("Spotihue is already running")
         else:
             forget_spotihue = tasks.clear_spotihue_task_id.signature()
             task = tasks.run_spotihue.apply_async(
                 (lights,),
-                {'current_track_retries': 10},
+                {"current_track_retries": 10},
                 link=forget_spotihue,
-                link_error=forget_spotihue
+                link_error=forget_spotihue,
             )
             redis_client.set(constants.REDIS_SPOTIHUE_TASK_ID, str(task.id))
 
@@ -187,9 +189,11 @@ async def stop_spotihue():
         spotihue_task_running = tasks.is_spotihue_running()
 
         if spotihue_task_running:
-            spotihue_task_id = redis_client.get(constants.REDIS_SPOTIHUE_TASK_ID).decode('utf-8')
+            spotihue_task_id = redis_client.get(
+                constants.REDIS_SPOTIHUE_TASK_ID
+            ).decode("utf-8")
             celery_app.control.revoke(spotihue_task_id, terminate=True)
-            logger.info(f'Terminated spotihue task {spotihue_task_id}')
+            logger.info(f"Terminated spotihue task {spotihue_task_id}")
             tasks.clear_spotihue_task_id()
 
             response = StandardResponse(success=True, message="spotihue stopped")
