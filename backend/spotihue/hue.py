@@ -51,7 +51,7 @@ class HueLight(phue.Light):
                 g = int(y * 255)
                 b = int((1 - x - y) * 255)
                 self._rgb = (r, g, b)
-            except (AttributeError, ValueError):
+            except (AttributeError, ValueError, KeyError):
                 self._rgb = None
 
         return self._rgb
