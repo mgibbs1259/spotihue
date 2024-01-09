@@ -32,7 +32,7 @@ function App() {
   // Use useEffect to make an API call on initial page load
   useEffect(() => {
     // Function to fetch data from API
-    const fetctConfigurationStatusData = async () => {
+    const fetchConfigurationStatusData = async () => {
       try {
         const response = await axios.get('http://localhost:8000/ready');
         const responseData = response.data;
@@ -50,26 +50,26 @@ function App() {
       }
     };
 
-    // Call the fetctConfigurationStatusData function when the component mounts
-    fetctConfigurationStatusData();
+    // Call the fetchConfigurationStatusData function when the component mounts
+    fetchConfigurationStatusData();
   }, [isHueModalOpen, isSpotifyModalOpen]); 
 
   //apiReadyResponse.data.hue_ready and apiReadyResponse.data.spotify_ready
   return (
     <div className="app">
-      <div className="app-container"> 
+      <div className="app-container">
       {apiReadyResponse &&     
          <ButtonContainer>
          {!areBothConfigurationsReady && (
            <>
              <PrimaryButton
-               text="configure hue"
+               text={apiReadyResponse.data.hue_ready ? "hue configured" : "configure hue"}
                fontSize="40px"
                disabled={apiReadyResponse.data.hue_ready}
                onClick={openHueModal}
              />
              <PrimaryButton
-               text="configure spotify"
+               text={apiReadyResponse.data.spotify_ready ? "spotify configured" : "configure spotify"}
                fontSize="40px"
                disabled={apiReadyResponse.data.spotify_ready}
                onClick={openSpotifyModal}
@@ -84,11 +84,13 @@ function App() {
          )}
 
       {isHueModalOpen &&
-          <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal} apiEndpoint="http://localhost:8000/setup-hue"/>
+          <HueConfigureModal isOpen={isHueModalOpen} onClose={closeHueModal}
+          apiEndpoint="http://localhost:8000/setup-hue"/>
       }
 
       {isSpotifyModalOpen &&
-          <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal} apiEndpoint="http://localhost:8000/authorize-spotify"/>
+          <SpotifyConfigureModal isOpen={isSpotifyModalOpen} onClose={closeSpotifyModal}
+          apiEndpoint="http://localhost:8000/authorize-spotify"/>
       }
       </div>
     </div>

@@ -8,7 +8,6 @@ x-api-common: &api-common
       - ./backend/.env
   volumes:
       - ./backend:/backend
-  user: spotihue_backend
 
 services:
   redis:
@@ -23,6 +22,7 @@ services:
     restart: unless-stopped
       
   celery:
+    container_name: celery
     <<: *api-common
     command: celery -A main worker --loglevel=info --statedb data/celery-worker.state
     depends_on:
@@ -34,6 +34,7 @@ services:
     restart: unless-stopped
 
   backend:
+    container_name: api
     <<: *api-common
     command: "uvicorn main:fast_app --reload --host 0.0.0.0 --port 8000"
     ports:
@@ -45,16 +46,21 @@ services:
       - default
     restart: unless-stopped
 
-  # frontend:
-  #   container_name: spotihue-ui
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.ui
-  #   networks:
-  #     - default
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - backend
+  frontend:
+    container_name: ui
+    build:
+     context: ./frontend
+     dockerfile: Dockerfile.ui
+    networks:
+      - default
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/frontend
+    command: 'npm start'
+    ports:
+      - '3000:3000'
 
 networks:
   default:
